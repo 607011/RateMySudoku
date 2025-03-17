@@ -91,7 +91,7 @@ impl Sudoku {
             .sum();
         let difficulty = (total_rating as f64) / (self.original_empty_cells as f64);
         println!("  Difficulty: {:.2}", difficulty);
-        println!("  Total notes removed: {}", total_rating);
+        println!("  Total candidates removed: {}", total_rating);
         for (strategy, count) in &self.rating {
             println!("  - {}: {}", strategy.to_string(), count);
         }
@@ -958,7 +958,7 @@ impl Sudoku {
         count += self.remove_notes_in_row(nums, row);
         count += self.remove_notes_in_col(nums, col);
         count += self.remove_notes_in_box(nums, row, col);
-        println!("Notes removed: {}", count);
+        println!("Candidates removed: {}", count);
         count
     }
 
