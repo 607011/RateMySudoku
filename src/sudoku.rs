@@ -89,14 +89,16 @@ impl Sudoku {
             .sum();
         let difficulty = (total_rating as f64) / (self.original_empty_cells as f64);
         println!("  Difficulty: {:.2}", difficulty);
-        println!("  Total candidates removed: {}", total_rating);
-        for (strategy, count) in &self.rating {
+        println!("  Total candidates removed: {}; by …", total_rating);
+        let mut strategies: Vec<(&SolvingStrategy, &usize)> = self.rating.iter().collect();
+        strategies.sort_by_key(|(strategy, _)| strategy.difficulty());
+        for (strategy, count) in strategies {
             println!("  - {}: {}", strategy.to_string(), count);
         }
     }
 
     fn unsolved(&self) -> bool {
-        self.board.iter().any(|row| row.contains(&0))
+        self.board.iter().any(|row| row.contains(&EMPTY))
     }
 
     pub fn serialized(&self) -> String {
@@ -190,26 +192,32 @@ impl Sudoku {
     }
 
     pub fn calc_all_notes(&mut self) {
+        // First calculate all the "used numbers" sets
         for i in 0..9 {
             self.nums_in_row[i] = self.calc_nums_in_row(i);
             self.nums_in_col[i] = self.calc_nums_in_col(i);
             self.nums_in_box[i] = self.calc_nums_in_box(i);
         }
-        for i in 0..9 {
-            for j in 0..9 {
-                if self.board[i][j] == EMPTY {
-                    let mut notes = (1..=9).collect::<HashSet<u8>>();
-                    for &num in &self.nums_in_row[i] {
-                        notes.remove(&num);
-                    }
-                    for &num in &self.nums_in_col[j] {
-                        notes.remove(&num);
-                    }
-                    for &num in &self.nums_in_box[3 * (i / 3) + j / 3] {
-                        notes.remove(&num);
-                    }
-                    self.notes[i][j] = notes;
+
+        // Then populate notes for empty cells
+        for row in 0..9 {
+            for col in 0..9 {
+                if self.board[row][col] != EMPTY {
+                    continue;
                 }
+                let box_idx = 3 * (row / 3) + col / 3;
+                let mut notes = (1..=9).collect::<HashSet<u8>>();
+                // Remove numbers already present in row, column, and box
+                for &num in &self.nums_in_row[row] {
+                    notes.remove(&num);
+                }
+                for &num in &self.nums_in_col[col] {
+                    notes.remove(&num);
+                }
+                for &num in &self.nums_in_box[box_idx] {
+                    notes.remove(&num);
+                }
+                self.notes[row][col] = notes;
             }
         }
     }
@@ -235,23 +243,36 @@ impl Sudoku {
 
     /// Solve the Sudoku the "computer" way by backtracking recursively
     fn solve(&mut self) -> bool {
-        for row in 0..9 {
-            for col in 0..9 {
-                if self.board[row][col] == EMPTY {
-                    for num in 1..=9 {
-                        if self.can_place(row, col, num) {
-                            self.board[row][col] = num;
-                            if self.solve() {
-                                return true;
-                            }
-                            self.board[row][col] = EMPTY;
-                        }
-                    }
-                    return false;
+        // Find empty cell
+        let mut empty_found = false;
+        let mut row = 0;
+        let mut col = 0;
+        'find_empty: for r in 0..9 {
+            for c in 0..9 {
+                if self.board[r][c] == EMPTY {
+                    row = r;
+                    col = c;
+                    empty_found = true;
+                    break 'find_empty;
                 }
             }
         }
-        true
+        // If no empty cell was found, the board is solved
+        if !empty_found {
+            return true;
+        }
+        // Try placing digits 1-9 in the empty cell
+        for num in 1..=9 {
+            if !self.can_place(row, col, num) {
+                continue;
+            }
+            self.board[row][col] = num;
+            if self.solve() {
+                return true;
+            }
+            self.board[row][col] = EMPTY;
+        }
+        false
     }
 
     pub fn solve_by_backtracking(&mut self) -> bool {
@@ -297,18 +318,22 @@ impl Sudoku {
         let mut count = 0;
         let mut row = 0;
         let mut col = 0;
+
         for i in 0..3 {
             for j in 0..3 {
-                if self.board[start_row + i][start_col + j] == 0 {
-                    count += 1;
-                    row = start_row + i;
-                    col = start_col + j;
+                if self.board[start_row + i][start_col + j] != EMPTY {
+                    continue;
                 }
+                count += 1;
+                row = start_row + i;
+                col = start_col + j;
             }
         }
+
         if count != 1 {
             return None;
         }
+
         let &digit = self.notes[row][col].iter().next().unwrap();
         Some((digit, row, col))
     }
@@ -376,11 +401,12 @@ impl Sudoku {
     fn resolve_obvious_single(&mut self) -> usize {
         for row in 0..9 {
             for col in 0..9 {
-                if self.notes[row][col].len() == 1 {
-                    assert_eq!(self.board[row][col], EMPTY);
-                    let &num = self.notes[row][col].iter().next().unwrap();
-                    return self.set_num(num, row, col);
+                if self.notes[row][col].len() != 1 {
+                    continue;
                 }
+                assert_eq!(self.board[row][col], EMPTY);
+                let &num = self.notes[row][col].iter().next().unwrap();
+                return self.set_num(num, row, col);
             }
         }
         0
@@ -439,18 +465,19 @@ impl Sudoku {
         // Check for hidden singles in columns
         for col in 0..9 {
             for row in 0..9 {
-                if self.board[row][col] == 0 {
-                    for &num in &self.notes[row][col] {
-                        let mut found = false;
-                        for i in 0..9 {
-                            if i != row && self.notes[i][col].contains(&num) {
-                                found = true;
-                                break;
-                            }
+                if self.board[row][col] != EMPTY {
+                    continue;
+                }
+                for &num in &self.notes[row][col] {
+                    let mut found = false;
+                    for i in 0..9 {
+                        if i != row && self.notes[i][col].contains(&num) {
+                            found = true;
+                            break;
                         }
-                        if !found {
-                            return self.set_num(num, row, col);
-                        }
+                    }
+                    if !found {
+                        return self.set_num(num, row, col);
                     }
                 }
             }
@@ -469,28 +496,25 @@ impl Sudoku {
                     for j in 0..3 {
                         let row = start_row + i;
                         let col = start_col + j;
-
-                        if self.board[row][col] == 0 {
-                            for &num in &self.notes[row][col] {
-                                let mut found = false;
-
-                                'box_check: for r in 0..3 {
-                                    for c in 0..3 {
-                                        let check_row = start_row + r;
-                                        let check_col = start_col + c;
-
-                                        if (check_row != row || check_col != col)
-                                            && self.notes[check_row][check_col].contains(&num)
-                                        {
-                                            found = true;
-                                            break 'box_check;
-                                        }
+                        if self.board[row][col] != EMPTY {
+                            continue;
+                        }
+                        for &num in &self.notes[row][col] {
+                            let mut found = false;
+                            'box_check: for r in 0..3 {
+                                for c in 0..3 {
+                                    let check_row = start_row + r;
+                                    let check_col = start_col + c;
+                                    if (check_row != row || check_col != col)
+                                        && self.notes[check_row][check_col].contains(&num)
+                                    {
+                                        found = true;
+                                        break 'box_check;
                                     }
                                 }
-
-                                if !found {
-                                    return self.set_num(num, row, col);
-                                }
+                            }
+                            if !found {
+                                return self.set_num(num, row, col);
                             }
                         }
                     }
@@ -502,42 +526,55 @@ impl Sudoku {
 
     fn resolve_pointing_pair_in_rows(&mut self) -> usize {
         let mut count = 0;
+
         for row in 0..9 {
             for num in 1..=9 {
                 // Track cells with candidate 'num' in this row
                 let mut cells_with_num = Vec::new();
+
                 for col in 0..9 {
-                    if self.notes[row][col].contains(&num) {
-                        cells_with_num.push(col);
+                    if !self.notes[row][col].contains(&num) {
+                        continue;
                     }
+                    cells_with_num.push(col);
                 }
 
-                // Check if exactly 2 cells with this candidate are in the same box
+                // Need exactly 2 cells with this candidate
                 if cells_with_num.len() != 2 {
                     continue;
                 }
+
                 let col1 = cells_with_num[0];
                 let col2 = cells_with_num[1];
 
-                // Check if they're in the same box
-                if col1 / 3 == col2 / 3 {
-                    let box_col = col1 / 3;
-                    let start_row = 3 * (row / 3);
-                    println!("Found pointing pair {:?} in row {} at columns {} and {}", num, row, col1, col2);
-                    // Remove this candidate from other cells in the same box but different row
-                    for r in start_row..start_row + 3 {
-                        if r != row {
-                            // Skip the original row
-                            for c in (box_col * 3)..(box_col * 3 + 3) {
-                                if self.notes[r][c].remove(&num) {
-                                    count += 1;
-                                }
-                            }
+                // They must be in the same box
+                if col1 / 3 != col2 / 3 {
+                    continue;
+                }
+
+                let box_col = col1 / 3;
+                let start_row = 3 * (row / 3);
+
+                println!(
+                    "Found pointing pair {:?} in row {} at columns {} and {}",
+                    num, row, col1, col2
+                );
+
+                // Remove this candidate from other cells in the same box but different row
+                for r in start_row..start_row + 3 {
+                    if r == row {
+                        continue; // Skip the original row
+                    }
+
+                    for c in (box_col * 3)..(box_col * 3 + 3) {
+                        if self.notes[r][c].remove(&num) {
+                            count += 1;
                         }
                     }
                 }
             }
         }
+
         count
     }
 
@@ -548,31 +585,41 @@ impl Sudoku {
                 // Find cells in this column that contain the number as a candidate
                 let mut cells_with_num = Vec::new();
                 for row in 0..9 {
-                    if self.notes[row][col].contains(&num) {
-                        cells_with_num.push(row);
+                    if !self.notes[row][col].contains(&num) {
+                        continue;
                     }
+                    cells_with_num.push(row);
                 }
 
                 // Check if exactly two cells with this candidate are in the same box
-                if cells_with_num.len() == 2 {
-                    let row1 = cells_with_num[0];
-                    let row2 = cells_with_num[1];
+                if cells_with_num.len() != 2 {
+                    continue;
+                }
 
-                    // Check if they're in the same box
-                    if row1 / 3 == row2 / 3 {
-                        let box_idx = row1 / 3;
-                        let start_col = 3 * (col / 3);
-                        println!("Found pointing pair {:?} in column {} at rows {} and {}", num, col, row1, row2);
-                        // Remove this candidate from other cells in the same box but different column
-                        for c in start_col..start_col + 3 {
-                            if c != col {
-                                // Skip the original column
-                                for r in (box_idx * 3)..(box_idx * 3 + 3) {
-                                    if self.notes[r][c].remove(&num) {
-                                        count += 1;
-                                    }
-                                }
-                            }
+                let row1 = cells_with_num[0];
+                let row2 = cells_with_num[1];
+
+                // Check if they're in the same box
+                if row1 / 3 != row2 / 3 {
+                    continue;
+                }
+
+                let box_idx = row1 / 3;
+                let start_col = 3 * (col / 3);
+                println!(
+                    "Found pointing pair {:?} in column {} at rows {} and {}",
+                    num, col, row1, row2
+                );
+
+                // Remove this candidate from other cells in the same box but different column
+                for c in start_col..start_col + 3 {
+                    if c == col {
+                        continue; // Skip the original column
+                    }
+
+                    for r in (box_idx * 3)..(box_idx * 3 + 3) {
+                        if self.notes[r][c].remove(&num) {
+                            count += 1;
                         }
                     }
                 }
@@ -1128,15 +1175,24 @@ impl Sudoku {
         println!();
         self.print();
         if self.unsolved() {
-            println!("**** SUDOKU NOT SOLVED ****");
+            println!("\n**** SUDOKU NOT SOLVED ****\n");
             self.dump_notes();
         } else {
-            println!("**** SUDOKU SOLVED ****");
+            println!("\n**** SUDOKU SOLVED ****\n");
         }
         self.dump_rating();
 
         let start = std::time::Instant::now();
         sudoku.solve_by_backtracking();
+
+        if self.serialized() != sudoku.serialized() {
+            println!("\nSOLUTIONS DIFFER\n");
+            println!("Human-like solver:");
+            self.print();
+            println!("Backtracking solver:");
+            sudoku.print();
+        }
+
         let duration = start.elapsed();
         println!(
             "For comparison: time to solve with backtracker: {} µs",
