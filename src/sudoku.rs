@@ -643,7 +643,7 @@ impl Sudoku {
         // Check for obvious pairs in rows
         for row in 0..9 {
             for col in 0..9 {
-                if self.board[row][col] != 0 || self.notes[row][col].len() != 2 {
+                if self.notes[row][col].len() != 2 {
                     continue;
                 }
 
@@ -679,7 +679,7 @@ impl Sudoku {
         // Check for obvious pairs in columns
         for col in 0..9 {
             for row in 0..9 {
-                if self.board[row][col] != 0 || self.notes[row][col].len() != 2 {
+                if self.notes[row][col].len() != 2 {
                     continue;
                 }
 
