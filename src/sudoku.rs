@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-#[allow(dead_code)]
 pub enum SolvingStrategy {
     LastDigitInRow,
     LastDigitInCol,
@@ -13,7 +12,6 @@ pub enum SolvingStrategy {
     PointingPair,
 }
 
-#[allow(dead_code)]
 impl SolvingStrategy {
     fn to_string(&self) -> &str {
         match self {
