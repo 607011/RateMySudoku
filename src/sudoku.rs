@@ -222,6 +222,9 @@ impl Sudoku {
 
     /// Check if `num` can be placed in row `row` and column `col`
     pub fn can_place(&self, row: usize, col: usize, num: u8) -> bool {
+        if self.board[row][col] != EMPTY {
+            return false;
+        }
         for i in 0..9 {
             // this is faster than using `nums_in_row`, `nums_in_col`, and `nums_in_box`
             // because these sets have to be recalculated every time a number is placed,
