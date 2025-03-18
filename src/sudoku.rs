@@ -1,41 +1,38 @@
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum SolvingStrategy {
-    LastDigitInRow,
-    LastDigitInCol,
-    LastDigitInBox,
+pub enum Strategy {
+    LastDigit,
     ObviousSingle,
     HiddenSingle,
     ObviousPair,
     HiddenPair,
     PointingPair,
+    XWing,
 }
 
-impl SolvingStrategy {
+impl Strategy {
     fn to_string(&self) -> &str {
         match self {
-            SolvingStrategy::LastDigitInRow => "last digit in row",
-            SolvingStrategy::LastDigitInCol => "last digit in column",
-            SolvingStrategy::LastDigitInBox => "last digit in box",
-            SolvingStrategy::ObviousSingle => "obvious single",
-            SolvingStrategy::HiddenSingle => "hidden single",
-            SolvingStrategy::PointingPair => "pointing pair",
-            SolvingStrategy::ObviousPair => "obvious pair",
-            SolvingStrategy::HiddenPair => "hidden pair",
+            Strategy::LastDigit => "last digit",
+            Strategy::ObviousSingle => "obvious single",
+            Strategy::HiddenSingle => "hidden single",
+            Strategy::PointingPair => "pointing pair",
+            Strategy::ObviousPair => "obvious pair",
+            Strategy::HiddenPair => "hidden pair",
+            Strategy::XWing => "x-wing",
         }
     }
 
     fn difficulty(&self) -> i32 {
         match self {
-            SolvingStrategy::LastDigitInRow => 1,
-            SolvingStrategy::LastDigitInCol => 1,
-            SolvingStrategy::LastDigitInBox => 1,
-            SolvingStrategy::ObviousSingle => 2,
-            SolvingStrategy::HiddenSingle => 3,
-            SolvingStrategy::PointingPair => 4,
-            SolvingStrategy::ObviousPair => 5,
-            SolvingStrategy::HiddenPair => 6,
+            Strategy::LastDigit => 4,
+            Strategy::ObviousSingle => 5,
+            Strategy::HiddenSingle => 14,
+            Strategy::PointingPair => 50,
+            Strategy::ObviousPair => 60,
+            Strategy::HiddenPair => 70,
+            Strategy::XWing => 140,
         }
     }
 }
@@ -49,7 +46,7 @@ pub struct Sudoku {
     nums_in_row: [HashSet<u8>; 9],
     nums_in_col: [HashSet<u8>; 9],
     nums_in_box: [HashSet<u8>; 9],
-    rating: HashMap<SolvingStrategy, usize>,
+    rating: HashMap<Strategy, usize>,
     original_empty_cells: usize,
 }
 
@@ -90,7 +87,7 @@ impl Sudoku {
         let difficulty = (total_rating as f64) / (self.original_empty_cells as f64);
         println!("  Difficulty: {:.2}", difficulty);
         println!("  Total candidates removed: {}; by …", total_rating);
-        let mut strategies: Vec<(&SolvingStrategy, &usize)> = self.rating.iter().collect();
+        let mut strategies: Vec<(&Strategy, &usize)> = self.rating.iter().collect();
         strategies.sort_by_key(|(strategy, _)| strategy.difficulty());
         for (strategy, count) in strategies {
             println!("  - {}: {}", strategy.to_string(), count);
@@ -155,6 +152,7 @@ impl Sudoku {
     }
 
     pub fn dump_notes(&self) {
+        println!();
         println!("     0     1     2     3     4     5     6     7     8");
         println!("  ╔═════╤═════╤═════╦═════╤═════╤═════╦═════╤═════╤═════╗");
         for i in 0..9 {
@@ -279,123 +277,90 @@ impl Sudoku {
         return self.solve();
     }
 
-    /// Check if there's only one digit missing in a certain row.
-    /// If so, return the digit besides the column where we've found it.
-    fn find_last_digit_in_row(&self, row: usize) -> Option<(u8, usize)> {
-        // Find the only empty cell in the row, if there's exactly one
-        let empty_cells = (0..9)
-            .filter(|&col| self.board[row][col] == 0)
-            .collect::<Vec<_>>();
-        if empty_cells.len() != 1 {
-            return None;
-        }
-        let col = empty_cells[0];
-        assert!(self.notes[row][col].len() == 1);
-        let &digit = self.notes[row][col].iter().next().unwrap();
-        Some((digit, col))
-    }
-
-    /// Check if there's only one digit missing in a certain column.
-    /// If so, return the digit besides the row where we've found it.
-    fn find_last_digit_in_col(&self, col: usize) -> Option<(u8, usize)> {
-        let empty_cells = (0..9)
-            .filter(|&row| self.board[row][col] == 0)
-            .collect::<Vec<_>>();
-        if empty_cells.len() != 1 {
-            return None;
-        }
-        let row = empty_cells[0];
-        assert!(self.notes[row][col].len() == 1);
-        let &digit = self.notes[row][col].iter().next().unwrap();
-        Some((digit, row))
-    }
-
-    /// Check if there's only one digit missing in a certain 3x3 box.
-    /// If so, return the digit besides the row and column where we've found it.
-    fn find_last_digit_in_box(&self, box_index: usize) -> Option<(u8, usize, usize)> {
-        let start_row = 3 * (box_index / 3);
-        let start_col = 3 * (box_index % 3);
-        let mut count = 0;
-        let mut row = 0;
-        let mut col = 0;
-
-        for i in 0..3 {
-            for j in 0..3 {
-                if self.board[start_row + i][start_col + j] != EMPTY {
-                    continue;
-                }
-                count += 1;
-                row = start_row + i;
-                col = start_col + j;
-            }
-        }
-
-        if count != 1 {
-            return None;
-        }
-
-        let &digit = self.notes[row][col].iter().next().unwrap();
-        Some((digit, row, col))
-    }
-
-    /// Check if there are last digits in any of the rows.
-    /// If so, return the digit besides the row and column where we've found it.
-    fn find_last_digit_in_rows(&self) -> Option<(u8, usize, usize)> {
-        for row in 0..9 {
-            if let Some((num, col)) = self.find_last_digit_in_row(row) {
-                return Some((num, row, col));
-            }
-        }
-        None
-    }
-
-    /// Check if there are last digits in any of the boxes.
-    /// If so, return the digit besides the row and column where we've found it.
-    fn find_last_digit_in_boxes(&self) -> Option<(u8, usize, usize)> {
-        for box_index in 0..9 {
-            if let Some((num, row, col)) = self.find_last_digit_in_box(box_index) {
-                return Some((num, row, col));
-            }
-        }
-        None
-    }
-
-    /// Check if there are last digits in any of the columns.
-    /// If so, return the digit besides the row and column where we've found it.
-    fn find_last_digit_in_cols(&self) -> Option<(u8, usize, usize)> {
-        for col in 0..9 {
-            if let Some((num, row)) = self.find_last_digit_in_col(col) {
-                return Some((num, row, col));
-            }
-        }
-        None
-    }
-
     /// Check if there are last digits in any of the rows.
     /// If so, remove it from the notes in the row, column, and box where we've found it.
     /// Set the respective cell to the digit.
     fn resolve_last_digit_in_rows(&mut self) -> usize {
-        let mut count = 0;
-        if let Some((num, row, col)) = self.find_last_digit_in_rows() {
-            count += self.set_num(num, row, col);
+        for row in 0..9 {
+            // Find the only empty cell in the row, if there's exactly one
+            let empty_cells = (0..9)
+                .filter(|&col| self.board[row][col] == EMPTY)
+                .collect::<Vec<_>>();
+            if empty_cells.len() != 1 {
+                continue;
+            }
+            let col = empty_cells[0];
+            assert!(self.notes[row][col].len() == 1);
+            let &digit = self.notes[row][col].iter().next().unwrap();
+            return self.set_num(digit, row, col);
         }
-        count
+        0
     }
 
     fn resolve_last_digit_in_cols(&mut self) -> usize {
-        let mut count = 0;
-        if let Some((num, row, col)) = self.find_last_digit_in_cols() {
-            count += self.set_num(num, row, col);
+        for col in 0..9 {
+            let empty_cells = (0..9)
+                .filter(|&row| self.board[row][col] == EMPTY)
+                .collect::<Vec<_>>();
+            if empty_cells.len() != 1 {
+                continue;
+            }
+            let row = empty_cells[0];
+            assert!(self.notes[row][col].len() == 1);
+            // if there's exactly one empty cell, set the digit
+            let &digit = self.notes[row][col].iter().next().unwrap();
+            return self.set_num(digit, row, col);
         }
-        count
+        0
     }
 
     fn resolve_last_digit_in_boxes(&mut self) -> usize {
-        let mut count = 0;
-        if let Some((num, row, col)) = self.find_last_digit_in_boxes() {
-            count += self.set_num(num, row, col);
+        for box_index in 0..9 {
+            let start_row = 3 * (box_index / 3);
+            let start_col = 3 * (box_index % 3);
+            let mut count = 0;
+            let mut empty_row = 0;
+            let mut empty_col = 0;
+
+            // count the number of empty cells in the box and track the location of the empty cell
+            'box_search: for i in 0..3 {
+                for j in 0..3 {
+                    let row = start_row + i;
+                    let col = start_col + j;
+                    if self.board[row][col] != EMPTY {
+                        continue;
+                    }
+                    count += 1;
+                    empty_row = row;
+                    empty_col = col;
+
+                    // If we already found more than one empty cell, we can break early
+                    if count > 1 {
+                        break 'box_search;
+                    }
+                }
+            }
+            if count != 1 {
+                continue;
+            }
+            assert!(self.notes[empty_row][empty_col].len() == 1);
+            // There's exactly one empty cell, so we can set the digit
+            let &digit = self.notes[empty_row][empty_col].iter().next().unwrap();
+            return self.set_num(digit, empty_row, empty_col);
         }
-        count
+        0
+    }
+
+    fn resolve_last_digit(&mut self) -> usize {
+        let count = self.resolve_last_digit_in_rows();
+        if count > 0 {
+            return count;
+        }
+        let count = self.resolve_last_digit_in_cols();
+        if count > 0 {
+            return count;
+        }
+        self.resolve_last_digit_in_boxes()
     }
 
     fn resolve_obvious_single(&mut self) -> usize {
@@ -529,7 +494,7 @@ impl Sudoku {
 
         for row in 0..9 {
             for num in 1..=9 {
-                // Track cells with candidate 'num' in this row
+                // Track cells with candidate `num` in this row
                 let mut cells_with_num = Vec::new();
 
                 for col in 0..9 {
@@ -574,7 +539,6 @@ impl Sudoku {
                 }
             }
         }
-
         count
     }
 
@@ -629,17 +593,15 @@ impl Sudoku {
     }
 
     fn resolve_pointing_pair(&mut self) -> usize {
-        self.dump_notes();
-        let mut count = 0;
-        count += self.resolve_pointing_pair_in_rows();
-        count += self.resolve_pointing_pair_in_cols();
-        self.dump_notes();
-        count
+        let count = self.resolve_pointing_pair_in_rows();
+        if count > 0 {
+            return count;
+        }
+        self.resolve_pointing_pair_in_cols()
     }
 
-    fn resolve_obvious_pair(&mut self) -> usize {
+    fn resolve_obvious_pair_in_rows(&mut self) -> usize {
         let mut count = 0;
-
         // Check for obvious pairs in rows
         for row in 0..9 {
             for col in 0..9 {
@@ -675,7 +637,11 @@ impl Sudoku {
                 }
             }
         }
+        count
+    }
 
+    fn resolve_obvious_pair_in_cols(&mut self) -> usize {
+        let mut count = 0;
         // Check for obvious pairs in columns
         for col in 0..9 {
             for row in 0..9 {
@@ -711,7 +677,11 @@ impl Sudoku {
                 }
             }
         }
+        count
+    }
 
+    fn resolve_obvious_pair_in_boxes(&mut self) -> usize {
+        let mut count = 0;
         // Check for obvious pairs in boxes
         for box_row in 0..3 {
             for box_col in 0..3 {
@@ -776,9 +746,20 @@ impl Sudoku {
         count
     }
 
-    fn resolve_hidden_pair(&mut self) -> usize {
-        let mut count = 0;
+    fn resolve_obvious_pair(&mut self) -> usize {
+        let count = self.resolve_obvious_pair_in_rows();
+        if count > 0 {
+            return count;
+        }
+        let count = self.resolve_obvious_pair_in_cols();
+        if count > 0 {
+            return count;
+        }
+        self.resolve_obvious_pair_in_boxes()
+    }
 
+    fn resolve_hidden_pair_in_rows(&mut self) -> usize {
+        let mut count = 0;
         // Check for hidden pairs in boxes
         for box_row in 0..3 {
             for box_col in 0..3 {
@@ -844,7 +825,11 @@ impl Sudoku {
                 }
             }
         }
+        count
+    }
 
+    fn resolve_hidden_pair_in_cols(&mut self) -> usize {
+        let mut count = 0;
         // Check for hidden pairs in rows
         for row in 0..9 {
             // Find which digits appear in exactly two cells in the row
@@ -899,7 +884,11 @@ impl Sudoku {
                 }
             }
         }
+        count
+    }
 
+    fn resolve_hidden_pair_in_boxes(&mut self) -> usize {
+        let mut count = 0;
         // Check for hidden pairs in columns
         for col in 0..9 {
             // Find which digits appear in exactly two cells in the column
@@ -954,8 +943,157 @@ impl Sudoku {
                 }
             }
         }
-
         count
+    }
+
+    fn resolve_hidden_pair(&mut self) -> usize {
+        let count = self.resolve_hidden_pair_in_rows();
+        if count > 0 {
+            return count;
+        }
+        let count = self.resolve_hidden_pair_in_cols();
+        if count > 0 {
+            return count;
+        }
+        self.resolve_hidden_pair_in_boxes()
+    }
+
+    fn resolve_xwing_in_rows(&mut self) -> usize {
+        let mut count = 0;
+        // Check for x-wings in rows
+        for num in 1..=9 {
+            for row1 in 0..9 {
+                let mut row2 = None;
+                let mut cols1 = Vec::new();
+                let mut cols2 = Vec::new();
+                // Find columns with candidate `num` in this row
+                for col in 0..9 {
+                    if self.notes[row1][col].contains(&num) {
+                        cols1.push(col);
+                    }
+                }
+                if cols1.len() != 2 {
+                    continue;
+                }
+                // Find another row with the same columns
+                for row in 0..9 {
+                    if row == row1 {
+                        continue;
+                    }
+                    cols2.clear();
+                    // Find columns with candidate `num` in this row
+                    for col in 0..9 {
+                        if self.notes[row][col].contains(&num) {
+                            cols2.push(col);
+                        }
+                    }
+                    // If we found another row with the same columns, we have an X-Wing
+                    if cols2.len() == 2 && cols1 == cols2 {
+                        row2 = Some(row);
+                        break;
+                    }
+                }
+                // If we found an X-Wing, remove the candidate from other cells in the same columns
+                if let Some(row2) = row2 {
+                    println!(
+                        "Found x-wing {:?} in rows {} and {} at columns {:?}",
+                        num, row1, row2, cols1
+                    );
+                    for row in 0..9 {
+                        if row != row1 && row != row2 {
+                            for &col in &cols1 {
+                                if self.notes[row][col].remove(&num) {
+                                    count += 1;
+                                    println!(
+                                        "Removed candidate {:?} from cell ({},{})",
+                                        num, row, col
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    if count > 0 {
+                        return count;
+                    }
+                }
+            }
+        }
+        count
+    }
+
+    fn resolve_xwing_in_cols(&mut self) -> usize {
+        let mut count = 0;
+        // Check for x-wings in columns
+        for num in 1..=9 {
+            for col1 in 0..9 {
+                let mut col2 = None;
+                let mut rows1 = Vec::new();
+                let mut rows2 = Vec::new();
+                // Find rows with candidate `num` in this column
+                for row in 0..9 {
+                    if self.notes[row][col1].contains(&num) {
+                        rows1.push(row);
+                    }
+                }
+                if rows1.len() != 2 {
+                    continue;
+                }
+                // Find another column with the same rows
+                for col in 0..9 {
+                    if col == col1 {
+                        continue;
+                    }
+                    rows2.clear();
+                    // Find rows with candidate `num` in this column
+                    for row in 0..9 {
+                        if self.notes[row][col].contains(&num) {
+                            rows2.push(row);
+                        }
+                    }
+                    // If we found another column with the same rows, we have an X-Wing
+                    if rows2.len() == 2 && rows1 == rows2 {
+                        col2 = Some(col);
+                        break;
+                    }
+                }
+                // If we found an X-Wing, remove the candidate from other cells in the same rows
+                if let Some(col2) = col2 {
+                    println!(
+                        "Found x-wing {:?} in columns {} and {} at rows {:?}",
+                        num, col1, col2, rows1
+                    );
+                    // Remove candidates from other cells in the same rows
+                    for row in &rows1 {
+                        for col in 0..9 {
+                            if col != col1 && col != col2 {
+                                if self.notes[*row][col].remove(&num) {
+                                    count += 1;
+                                    println!(
+                                        "Removed candidate {:?} from cell ({},{})",
+                                        num, *row, col
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    if count > 0 {
+                        return count;
+                    }
+                }
+            }
+        }
+        0
+    }
+
+    /// Find and resolve X-Wing candidates.
+    /// An X-Wing occurs when a digit can only go in two rows and two columns, forming a rectangle.
+    /// In this case, the digit can be removed from all other cells in the same rows and columns.
+    fn resolve_xwing(&mut self) -> usize {
+        let count = self.resolve_xwing_in_rows();
+        if count > 0 {
+            return count;
+        }
+        self.resolve_xwing_in_cols()
     }
 
     fn remove_notes_in_row(&mut self, nums: &[u8], row: usize) -> usize {
@@ -998,6 +1136,7 @@ impl Sudoku {
         count
     }
 
+    /// Remove candidates from the notes in the same row, column, and box where we've set a digit.
     fn remove_notes(&mut self, nums: &[u8], row: usize, col: usize) -> usize {
         let mut count = 0;
         count += self.remove_notes_in_row(nums, row);
@@ -1007,8 +1146,10 @@ impl Sudoku {
         count
     }
 
+    /// Set a digit in the Sudoku board and remove its candidates from the notes.
+    /// Return the number of notes removed.
     fn set_num(&mut self, num: u8, row: usize, col: usize) -> usize {
-        println!("setting num {} in row {}, col {}", num, row, col);
+        println!("Setting num {} in row {}, col {}", num, row, col);
         self.board[row][col] = num;
         self.nums_in_row[row].insert(num);
         self.nums_in_col[col].insert(num);
@@ -1025,7 +1166,7 @@ impl Sudoku {
         self.calc_all_notes();
         // since we're starting from scratch, we clear the rating
         self.rating.clear();
-        let num_strategies = 6;
+        let num_strategies = 7;
         let mut no_progress_counter = 0;
         while self.unsolved() {
             if no_progress_counter >= num_strategies {
@@ -1035,73 +1176,35 @@ impl Sudoku {
                 );
                 break;
             }
-            // self.print();
-            // self.dump_notes();
 
-            print!("Applying strategy 'last digit in box' ... ");
-            let num_removed = self.resolve_last_digit_in_boxes();
-            if num_removed > 0 {
-                self.rating
-                    .entry(SolvingStrategy::LastDigitInBox)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
-            } else {
-                no_progress_counter += 1;
-                println!();
-            }
-            print!("Applying strategy 'last digit in column' ... ");
-            let num_removed = self.resolve_last_digit_in_cols();
-            if num_removed > 0 {
-                self.rating
-                    .entry(SolvingStrategy::LastDigitInCol)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
-                continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
-            }
-            print!("Applying strategy 'last digit in row' ... ");
-            let num_removed = self.resolve_last_digit_in_rows();
-            if num_removed > 0 {
-                self.rating
-                    .entry(SolvingStrategy::LastDigitInRow)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
-                continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
-            }
+            // Strategy 1
             print!(
                 "Applying strategy '{}' ... ",
-                SolvingStrategy::ObviousSingle.to_string()
+                Strategy::LastDigit.to_string()
             );
-            let num_removed = self.resolve_obvious_single();
-            if num_removed > 0 {
+            let nums_removed = self.resolve_last_digit();
+            if nums_removed > 0 {
                 self.rating
-                    .entry(SolvingStrategy::ObviousSingle)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
+                    .entry(Strategy::LastDigit)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
                 no_progress_counter = 0; // Reset counter when progress is made
-                continue;
             } else {
                 no_progress_counter += 1;
                 println!();
             }
+
+            // Strategy 2
             print!(
                 "Applying strategy '{}' ... ",
-                SolvingStrategy::HiddenSingle.to_string()
+                Strategy::ObviousSingle.to_string()
             );
-            let num_removed = self.resolve_hidden_single();
-            if num_removed > 0 {
+            let nums_removed = self.resolve_obvious_single();
+            if nums_removed > 0 {
                 self.rating
-                    .entry(SolvingStrategy::HiddenSingle)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
+                    .entry(Strategy::ObviousSingle)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
                 no_progress_counter = 0; // Reset counter when progress is made
                 continue;
             } else {
@@ -1109,16 +1212,35 @@ impl Sudoku {
                 println!();
             }
 
+            // Strategy 3
             print!(
                 "Applying strategy '{}' ... ",
-                SolvingStrategy::PointingPair.to_string()
+                Strategy::HiddenSingle.to_string()
+            );
+            let nums_removed = self.resolve_hidden_single();
+            if nums_removed > 0 {
+                self.rating
+                    .entry(Strategy::HiddenSingle)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
+                no_progress_counter = 0; // Reset counter when progress is made
+                continue;
+            } else {
+                no_progress_counter += 1;
+                println!();
+            }
+
+            // Strategy 4
+            print!(
+                "Applying strategy '{}' ... ",
+                Strategy::PointingPair.to_string()
             );
             let num_removed = self.resolve_pointing_pair();
             if num_removed > 0 {
                 self.rating
-                    .entry(SolvingStrategy::PointingPair)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
+                    .entry(Strategy::PointingPair)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
                 no_progress_counter = 0; // Reset counter when progress is made
                 continue;
             } else {
@@ -1126,37 +1248,52 @@ impl Sudoku {
                 println!();
             }
 
+            // Strategy 5
             print!(
                 "Applying strategy '{}' ... ",
-                SolvingStrategy::ObviousPair.to_string()
+                Strategy::ObviousPair.to_string()
             );
-            let num_removed = self.resolve_obvious_pair();
-            if num_removed > 0 {
+            let nums_removed = self.resolve_obvious_pair();
+            if nums_removed > 0 {
                 self.rating
-                    .entry(SolvingStrategy::ObviousPair)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
+                    .entry(Strategy::ObviousPair)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
                 no_progress_counter = 0; // Reset counter when progress is made
-                self.dump_notes();
                 continue;
             } else {
                 no_progress_counter += 1;
                 println!();
             }
 
+            // Strategy 6
+            print!(
+                "Applying strategy '{}' ... ",
+                Strategy::HiddenPair.to_string()
+            );
+            let nums_removed = self.resolve_hidden_pair();
+            if nums_removed > 0 {
+                self.rating
+                    .entry(Strategy::HiddenPair)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
+                no_progress_counter = 0; // Reset counter when progress is made
+                continue;
+            } else {
+                no_progress_counter += 1;
+                println!();
+            }
+
+            // Strategy 7
             self.dump_notes();
-            print!(
-                "Applying strategy '{}' ... ",
-                SolvingStrategy::HiddenPair.to_string()
-            );
-            let num_removed = self.resolve_hidden_pair();
-            if num_removed > 0 {
+            print!("Applying strategy '{}' ... ", Strategy::XWing.to_string());
+            let nums_removed = self.resolve_xwing();
+            if nums_removed > 0 {
                 self.rating
-                    .entry(SolvingStrategy::HiddenPair)
-                    .and_modify(|count| *count += num_removed)
-                    .or_insert(num_removed);
+                    .entry(Strategy::XWing)
+                    .and_modify(|count| *count += nums_removed)
+                    .or_insert(nums_removed);
                 no_progress_counter = 0; // Reset counter when progress is made
-                self.dump_notes();
                 continue;
             } else {
                 no_progress_counter += 1;
@@ -1164,7 +1301,6 @@ impl Sudoku {
             }
 
             self.print();
-
             self.dump_notes();
         }
     }
@@ -1201,17 +1337,14 @@ impl Sudoku {
     }
 
     pub fn from_string(&mut self, input_string: &str) {
-        let mut i = 0;
-        let mut j = 0;
-        for c in input_string.chars() {
-            if c.is_digit(10) {
-                self.board[i][j] = c.to_digit(10).unwrap() as u8;
-                j += 1;
-                if j == 9 {
-                    j = 0;
-                    i += 1;
-                }
-            }
+        let digits = input_string
+            .chars()
+            .filter_map(|c| c.to_digit(10).map(|d| d as u8))
+            .take(81);
+        for (idx, digit) in digits.enumerate() {
+            let row = idx / 9;
+            let col = idx % 9;
+            self.board[row][col] = digit;
         }
     }
 }
@@ -1231,71 +1364,5 @@ mod tests {
             sudoku.serialized(),
             "865431297479258316231697548513824769947563182628719453186375924754982631392146875"
         );
-    }
-
-    #[test]
-    fn test_last_digit_in_rows_strategy() {
-        let board_string =
-            "831547269729030405564290073642175398973064521158923746297310054415080632386452007"
-                .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
-
-        // Calculate notes before checking for last digit in row
-        sudoku.calc_all_notes();
-
-        // The expected digit 8 should be found in row 4, col 3
-        if let Some((num, row, col)) = sudoku.find_last_digit_in_rows() {
-            assert_eq!(num, 8);
-            assert_eq!(row, 4);
-            assert_eq!(col, 3);
-        } else {
-            panic!("Expected to find last digit 8 in row 4, col 3, but found none");
-        }
-
-        if let Some((num, row, col)) = sudoku.find_last_digit_in_boxes() {
-            assert_eq!(num, 8);
-            assert_eq!(row, 4);
-            assert_eq!(col, 3);
-        } else {
-            panic!("Expected to find last digit 8 in row 4, col 3, but found none");
-        }
-
-        let result = sudoku.find_last_digit_in_cols();
-        assert_eq!(result, None);
-
-        // Verify that applying the strategy actually sets the digit
-        let count = sudoku.resolve_last_digit_in_rows();
-        assert_eq!(count, 2);
-        assert_eq!(sudoku.board[4][3], 8);
-    }
-
-    #[test]
-    fn test_last_digit_in_cols_strategy() {
-        let board_string =
-            "831547269729030405564290073642175398973064521158923746297310054415080632386452007"
-                .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
-        sudoku.calc_all_notes();
-        let result = sudoku.find_last_digit_in_cols();
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn test_last_digit_in_boxes_strategy() {
-        let board_string =
-            "831547269729030405564290073642175398973064521158923746297310054415080632386452007"
-                .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
-        sudoku.calc_all_notes();
-        if let Some((num, row, col)) = sudoku.find_last_digit_in_boxes() {
-            assert_eq!(num, 8);
-            assert_eq!(row, 4);
-            assert_eq!(col, 3);
-        } else {
-            panic!("Expected to find last digit 8 in row 4, col 3, but found none");
-        }
-        let count = sudoku.resolve_last_digit_in_boxes();
-        assert_eq!(count, 2);
-        assert_eq!(sudoku.board[4][3], 8);
     }
 }
