@@ -11,7 +11,8 @@ fn main() {
         println!("Please provide a string of length 81");
         return;
     }
-    let mut s = sudoku::Sudoku::new(&args[1]);
+    let mut s = sudoku::Sudoku::new();
+    s.from_string(&args[1]);
     let start = std::time::Instant::now();
     s.solve_puzzle();
     let duration = start.elapsed();
