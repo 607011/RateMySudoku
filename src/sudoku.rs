@@ -60,21 +60,16 @@ pub struct Sudoku {
 /// - `nums_in_box`: An array of HashSets, where each HashSet contains the numbers already present in that 3x3 box.
 /// - `rating`: A HashMap to store the rating of the Sudoku puzzle (not currently used).
 impl Sudoku {
-    pub fn new(board_string: &String) -> Sudoku {
-        if board_string.chars().filter(|c| c.is_digit(10)).count() != 81 {
-            panic!("Invalid Sudoku board: must contain exactly 81 numeric characters");
-        }
-        let mut b = Sudoku {
+    pub fn new() -> Sudoku {
+        Sudoku {
             board: [[0; 9]; 9],
             notes: std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new())),
             nums_in_row: std::array::from_fn(|_| HashSet::new()),
             nums_in_col: std::array::from_fn(|_| HashSet::new()),
             nums_in_box: std::array::from_fn(|_| HashSet::new()),
             rating: HashMap::new(),
-            original_empty_cells: board_string.chars().filter(|&c| c == '0').count(),
-        };
-        b.from_string(&board_string);
-        b
+            original_empty_cells: 0,
+        }
     }
 
     pub fn dump_rating(&self) {
@@ -1267,8 +1262,12 @@ impl Sudoku {
         );
     }
 
-    pub fn from_string(&mut self, input_string: &str) {
-        let digits = input_string
+    pub fn from_string(&mut self, board_string: &str) {
+        if board_string.chars().filter(|c| c.is_digit(10)).count() != 81 {
+            panic!("Invalid Sudoku board: must contain exactly 81 numeric characters");
+        }
+        self.original_empty_cells = board_string.chars().filter(|&c| c == '0').count();
+        let digits = board_string
             .chars()
             .filter_map(|c| c.to_digit(10).map(|d| d as u8))
             .take(81);
@@ -1289,8 +1288,10 @@ mod tests {
         let board_string =
             "860001000009250006000000008010020760040000000608000053080075024050002000300000000"
                 .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         sudoku.solve_by_backtracking();
+
         assert_eq!(
             sudoku.serialized(),
             "865431297479258316231697548513824769947563182628719453186375924754982631392146875"
@@ -1302,13 +1303,15 @@ mod tests {
         let board_string =
             "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         assert_eq!(sudoku.original_empty_cells, 81);
 
         let board_string =
             "123456789123456789123456789123456789123456789123456789123456789123456789123456789"
                 .to_string();
-        let sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         assert_eq!(sudoku.original_empty_cells, 0);
     }
 
@@ -1317,10 +1320,7 @@ mod tests {
         let board_string =
             "123456789000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let mut sudoku = Sudoku::new(
-            &"000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                .to_string(),
-        );
+        let mut sudoku = Sudoku::new();
         sudoku.from_string(&board_string);
         for i in 0..9 {
             assert_eq!(sudoku.board[0][i], (i + 1) as u8);
@@ -1332,7 +1332,8 @@ mod tests {
         let board_string =
             "123456789000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         assert_eq!(sudoku.serialized(), board_string);
     }
 
@@ -1341,13 +1342,16 @@ mod tests {
         let board_string =
             "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
+
         assert!(sudoku.unsolved());
 
         let board_string =
             "123456789123456789123456789123456789123456789123456789123456789123456789123456789"
                 .to_string();
-        let sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         assert!(!sudoku.unsolved());
     }
 
@@ -1356,7 +1360,8 @@ mod tests {
         let board_string =
             "123456789000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
 
         for j in 0..9 {
             for i in 0..9 {
@@ -1370,7 +1375,8 @@ mod tests {
         let board_string =
             "120000000000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         sudoku.calc_all_notes();
 
         // Cell (0,0) has value 1, so notes should be empty
@@ -1398,7 +1404,8 @@ mod tests {
         let board_string =
             "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         sudoku.calc_all_notes();
 
         let notes_removed = sudoku.set_num(1, 0, 0);
@@ -1414,7 +1421,8 @@ mod tests {
         let board_string =
             "120000000000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         sudoku.calc_all_notes();
 
         // Manually set up a situation where there's an obvious single
@@ -1434,7 +1442,8 @@ mod tests {
         let board_string =
             "123456780000000000000000000000000000000000000000000000000000000000000000000000000"
                 .to_string();
-        let mut sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         sudoku.calc_all_notes();
 
         let notes_removed = sudoku.resolve_last_digit();
@@ -1464,7 +1473,8 @@ mod tests {
         chars[0] = '0';
         let board_string: String = chars.into_iter().collect();
 
-        let mut sudoku = Sudoku::new(&board_string);
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(&board_string);
         sudoku.solve_puzzle();
         assert_eq!(sudoku.board[0][0], 1);
         assert!(!sudoku.unsolved());
@@ -1472,9 +1482,9 @@ mod tests {
 
     #[test]
     fn test_resolve_hidden_single() {
-        let mut sudoku = Sudoku::new(
-            &"000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                .to_string(),
+        let mut sudoku = Sudoku::new();
+        sudoku.from_string(
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
         );
         sudoku.calc_all_notes();
 
