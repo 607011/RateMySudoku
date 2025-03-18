@@ -1137,140 +1137,100 @@ impl Sudoku {
         self.calc_all_notes();
         // since we're starting from scratch, we clear the rating
         self.rating.clear();
-        let num_strategies = 7;
-        let mut no_progress_counter = 0;
         while self.unsolved() {
-            if no_progress_counter >= num_strategies {
-                println!(
-                    "No progress made after trying all {} strategies. Breaking loop.",
-                    num_strategies
-                );
-                break;
-            }
+            let mut nums_removed: usize;
 
-            // Strategy 1
             print!(
-                "Applying strategy '{}' ... ",
+                "\nApplying strategy '{}' ... ",
                 Strategy::LastDigit.to_string()
             );
-            let nums_removed = self.resolve_last_digit();
+            nums_removed = self.resolve_last_digit();
             if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::LastDigit)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
-            // Strategy 2
             print!(
-                "Applying strategy '{}' ... ",
+                "\nApplying strategy '{}' ... ",
                 Strategy::ObviousSingle.to_string()
             );
-            let nums_removed = self.resolve_obvious_single();
+            nums_removed = self.resolve_obvious_single();
             if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::ObviousSingle)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
                 continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
-            // Strategy 3
             print!(
-                "Applying strategy '{}' ... ",
+                "\nApplying strategy '{}' ... ",
                 Strategy::HiddenSingle.to_string()
             );
-            let nums_removed = self.resolve_hidden_single();
+            nums_removed = self.resolve_hidden_single();
             if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::HiddenSingle)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
                 continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
-            // Strategy 4
             print!(
-                "Applying strategy '{}' ... ",
+                "\nApplying strategy '{}' ... ",
                 Strategy::PointingPair.to_string()
             );
-            let num_removed = self.resolve_pointing_pair();
-            if num_removed > 0 {
+            nums_removed = self.resolve_pointing_pair();
+            if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::PointingPair)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
                 continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
-            // Strategy 5
             print!(
-                "Applying strategy '{}' ... ",
+                "\nApplying strategy '{}' ... ",
                 Strategy::ObviousPair.to_string()
             );
-            let nums_removed = self.resolve_obvious_pair();
+            nums_removed = self.resolve_obvious_pair();
             if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::ObviousPair)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
                 continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
-            // Strategy 6
             print!(
-                "Applying strategy '{}' ... ",
+                "\nApplying strategy '{}' ... ",
                 Strategy::HiddenPair.to_string()
             );
-            let nums_removed = self.resolve_hidden_pair();
+            nums_removed = self.resolve_hidden_pair();
             if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::HiddenPair)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
                 continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
-            // Strategy 7
-            self.dump_notes();
-            print!("Applying strategy '{}' ... ", Strategy::XWing.to_string());
-            let nums_removed = self.resolve_xwing();
+            print!("\nApplying strategy '{}' ... ", Strategy::XWing.to_string());
+            nums_removed = self.resolve_xwing();
             if nums_removed > 0 {
                 self.rating
                     .entry(Strategy::XWing)
                     .and_modify(|count| *count += nums_removed)
                     .or_insert(nums_removed);
-                no_progress_counter = 0; // Reset counter when progress is made
                 continue;
-            } else {
-                no_progress_counter += 1;
-                println!();
             }
 
+            if nums_removed == 0 {
+                println!("\nNo more strategies to apply");
+                break;
+            }
             self.print();
             self.dump_notes();
         }
