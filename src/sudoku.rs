@@ -601,7 +601,6 @@ impl Sudoku {
     }
 
     fn resolve_obvious_pair_in_rows(&mut self) -> usize {
-        let mut count = 0;
         // Check for obvious pairs in rows
         for row in 0..9 {
             for col in 0..9 {
@@ -616,6 +615,7 @@ impl Sudoku {
                     if self.notes[row][i] != pair {
                         continue;
                     }
+                    let mut count = 0;
                     // Found a pair, remove these candidates from other cells in the same row
                     let nums: Vec<u8> = pair.iter().cloned().collect();
                     for j in 0..9 {
@@ -637,11 +637,10 @@ impl Sudoku {
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_obvious_pair_in_cols(&mut self) -> usize {
-        let mut count = 0;
         // Check for obvious pairs in columns
         for col in 0..9 {
             for row in 0..9 {
@@ -656,6 +655,7 @@ impl Sudoku {
                     if self.notes[i][col] != pair {
                         continue;
                     }
+                    let mut count = 0;
                     // Found a pair, remove these candidates from other cells in the same column
                     let nums: Vec<u8> = pair.iter().cloned().collect();
                     for j in 0..9 {
@@ -677,11 +677,10 @@ impl Sudoku {
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_obvious_pair_in_boxes(&mut self) -> usize {
-        let mut count = 0;
         // Check for obvious pairs in boxes
         for box_row in 0..3 {
             for box_col in 0..3 {
@@ -713,6 +712,7 @@ impl Sudoku {
                                     continue;
                                 }
 
+                                let mut count = 0;
                                 // Found a pair, remove these candidates from other cells in the same box
                                 let nums: Vec<u8> = pair.iter().cloned().collect();
                                 for r in 0..3 {
@@ -743,7 +743,7 @@ impl Sudoku {
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_obvious_pair(&mut self) -> usize {
@@ -759,7 +759,6 @@ impl Sudoku {
     }
 
     fn resolve_hidden_pair_in_rows(&mut self) -> usize {
-        let mut count = 0;
         // Check for hidden pairs in boxes
         for box_row in 0..3 {
             for box_col in 0..3 {
@@ -801,7 +800,7 @@ impl Sudoku {
 
                 // Apply the strategy: for each hidden pair, remove all other digits from those cells
                 for (digit1, digit2, cell1, cell2) in digit_pairs {
-                    let mut local_count = 0;
+                    let mut count = 0;
                     // Remove all other digits from these two cells
                     for &(row, col) in &[cell1, cell2] {
                         for digit in 1..=9 {
@@ -809,27 +808,24 @@ impl Sudoku {
                                 && digit != digit2
                                 && self.notes[row][col].remove(&digit)
                             {
-                                local_count += 1;
+                                count += 1;
                             }
                         }
                     }
-
-                    if local_count > 0 {
+                    if count > 0 {
                         println!(
                             "Found hidden pair ({},{}) in box at cells ({},{}) and ({},{})",
                             digit1, digit2, cell1.0, cell1.1, cell2.0, cell2.1
                         );
-                        count += local_count;
                         return count;
                     }
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_hidden_pair_in_cols(&mut self) -> usize {
-        let mut count = 0;
         // Check for hidden pairs in rows
         for row in 0..9 {
             // Find which digits appear in exactly two cells in the row
@@ -863,38 +859,35 @@ impl Sudoku {
 
             // Apply the strategy: for each hidden pair, remove all other digits from those cells
             for (digit1, digit2, col1, col2) in digit_pairs {
-                let mut local_count = 0;
+                let mut count = 0;
                 // Remove all other digits from these two cells
                 for &col in &[col1, col2] {
                     for digit in 1..=9 {
                         if digit != digit1 && digit != digit2 && self.notes[row][col].remove(&digit)
                         {
-                            local_count += 1;
+                            count += 1;
                         }
                     }
                 }
-
-                if local_count > 0 {
+                if count > 0 {
                     println!(
                         "Found hidden pair ({},{}) in row {} at columns {} and {}",
                         digit1, digit2, row, col1, col2
                     );
-                    count += local_count;
                     return count;
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_hidden_pair_in_boxes(&mut self) -> usize {
-        let mut count = 0;
         // Check for hidden pairs in columns
         for col in 0..9 {
             // Find which digits appear in exactly two cells in the column
             let mut digit_locations: HashMap<u8, Vec<usize>> = HashMap::new();
             for row in 0..9 {
-                if self.board[row][col] != 0 {
+                if self.board[row][col] != EMPTY {
                     continue;
                 }
                 for &num in &self.notes[row][col] {
@@ -922,28 +915,26 @@ impl Sudoku {
 
             // Apply the strategy: for each hidden pair, remove all other digits from those cells
             for (digit1, digit2, row1, row2) in digit_pairs {
-                let mut local_count = 0;
+                let mut count = 0;
                 // Remove all other digits from these two cells
                 for &row in &[row1, row2] {
                     for digit in 1..=9 {
                         if digit != digit1 && digit != digit2 && self.notes[row][col].remove(&digit)
                         {
-                            local_count += 1;
+                            count += 1;
                         }
                     }
                 }
-
-                if local_count > 0 {
+                if count > 0 {
                     println!(
                         "Found hidden pair ({},{}) in column {} at rows {} and {}",
                         digit1, digit2, col, row1, row2
                     );
-                    count += local_count;
                     return count;
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_hidden_pair(&mut self) -> usize {
@@ -959,7 +950,6 @@ impl Sudoku {
     }
 
     fn resolve_xwing_in_rows(&mut self) -> usize {
-        let mut count = 0;
         // Check for x-wings in rows
         for num in 1..=9 {
             for row1 in 0..8 {
@@ -991,6 +981,7 @@ impl Sudoku {
                         "Found x-wing {:?} in rows {} and {} at columns {:?}",
                         num, row1, row2, cols1
                     );
+                    let mut count = 0;
                     // Remove the candidate from other cells in the same columns
                     for row in 0..9 {
                         if row == row1 || row == row2 {
@@ -1014,7 +1005,6 @@ impl Sudoku {
     }
 
     fn resolve_xwing_in_cols(&mut self) -> usize {
-        let mut count = 0;
         // Check for x-wings in columns
         for num in 1..=9 {
             for col1 in 0..8 {
@@ -1047,6 +1037,7 @@ impl Sudoku {
                         "Found x-wing {:?} in columns {} and {} at rows {:?}",
                         num, col1, col2, rows1
                     );
+                    let mut count = 0;
                     // Remove candidates from other cells in the same rows
                     for &row in &rows1 {
                         for col in 0..9 {
