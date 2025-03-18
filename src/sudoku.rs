@@ -962,10 +962,9 @@ impl Sudoku {
         let mut count = 0;
         // Check for x-wings in rows
         for num in 1..=9 {
-            for row1 in 0..9 {
-                let mut row2 = None;
+            for row1 in 0..8 {
+                // We don't need to check the last row
                 let mut cols1 = Vec::new();
-                let mut cols2 = Vec::new();
                 // Find columns with candidate `num` in this row
                 for col in 0..9 {
                     if self.notes[row1][col].contains(&num) {
@@ -976,39 +975,32 @@ impl Sudoku {
                     continue;
                 }
                 // Find another row with the same columns
-                for row in 0..9 {
-                    if row == row1 {
-                        continue;
-                    }
-                    cols2.clear();
+                for row2 in (row1 + 1)..9 {
+                    let mut cols2 = Vec::new();
                     // Find columns with candidate `num` in this row
                     for col in 0..9 {
-                        if self.notes[row][col].contains(&num) {
+                        if self.notes[row2][col].contains(&num) {
                             cols2.push(col);
                         }
                     }
                     // If we found another row with the same columns, we have an X-Wing
-                    if cols2.len() == 2 && cols1 == cols2 {
-                        row2 = Some(row);
-                        break;
+                    if cols2.len() != 2 || cols1 != cols2 {
+                        continue;
                     }
-                }
-                // If we found an X-Wing, remove the candidate from other cells in the same columns
-                if let Some(row2) = row2 {
                     println!(
                         "Found x-wing {:?} in rows {} and {} at columns {:?}",
                         num, row1, row2, cols1
                     );
+                    // Remove the candidate from other cells in the same columns
                     for row in 0..9 {
-                        if row != row1 && row != row2 {
-                            for &col in &cols1 {
-                                if self.notes[row][col].remove(&num) {
-                                    count += 1;
-                                    println!(
-                                        "Removed candidate {:?} from cell ({},{})",
-                                        num, row, col
-                                    );
-                                }
+                        if row == row1 || row == row2 {
+                            continue;
+                        }
+
+                        for &col in &cols1 {
+                            if self.notes[row][col].remove(&num) {
+                                count += 1;
+                                println!("Removed candidate {:?} from cell ({},{})", num, row, col);
                             }
                         }
                     }
@@ -1018,17 +1010,17 @@ impl Sudoku {
                 }
             }
         }
-        count
+        0
     }
 
     fn resolve_xwing_in_cols(&mut self) -> usize {
         let mut count = 0;
         // Check for x-wings in columns
         for num in 1..=9 {
-            for col1 in 0..9 {
-                let mut col2 = None;
+            for col1 in 0..8 {
+                // We don't need to check the last column
                 let mut rows1 = Vec::new();
-                let mut rows2 = Vec::new();
+
                 // Find rows with candidate `num` in this column
                 for row in 0..9 {
                     if self.notes[row][col1].contains(&num) {
@@ -1039,40 +1031,32 @@ impl Sudoku {
                     continue;
                 }
                 // Find another column with the same rows
-                for col in 0..9 {
-                    if col == col1 {
-                        continue;
-                    }
-                    rows2.clear();
+                for col2 in (col1 + 1)..9 {
+                    let mut rows2 = Vec::new();
                     // Find rows with candidate `num` in this column
                     for row in 0..9 {
-                        if self.notes[row][col].contains(&num) {
+                        if self.notes[row][col2].contains(&num) {
                             rows2.push(row);
                         }
                     }
                     // If we found another column with the same rows, we have an X-Wing
-                    if rows2.len() == 2 && rows1 == rows2 {
-                        col2 = Some(col);
-                        break;
+                    if rows2.len() != 2 || rows1 != rows2 {
+                        continue;
                     }
-                }
-                // If we found an X-Wing, remove the candidate from other cells in the same rows
-                if let Some(col2) = col2 {
                     println!(
                         "Found x-wing {:?} in columns {} and {} at rows {:?}",
                         num, col1, col2, rows1
                     );
                     // Remove candidates from other cells in the same rows
-                    for row in &rows1 {
+                    for &row in &rows1 {
                         for col in 0..9 {
-                            if col != col1 && col != col2 {
-                                if self.notes[*row][col].remove(&num) {
-                                    count += 1;
-                                    println!(
-                                        "Removed candidate {:?} from cell ({},{})",
-                                        num, *row, col
-                                    );
-                                }
+                            if col == col1 || col == col2 {
+                                continue;
+                            }
+
+                            if self.notes[row][col].remove(&num) {
+                                count += 1;
+                                println!("Removed candidate {:?} from cell ({},{})", num, row, col);
                             }
                         }
                     }
