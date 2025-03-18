@@ -1296,4 +1296,195 @@ mod tests {
             "865431297479258316231697548513824769947563182628719453186375924754982631392146875"
         );
     }
+
+    #[test]
+    fn test_new_sudoku() {
+        let board_string =
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let sudoku = Sudoku::new(&board_string);
+        assert_eq!(sudoku.original_empty_cells, 81);
+
+        let board_string =
+            "123456789123456789123456789123456789123456789123456789123456789123456789123456789"
+                .to_string();
+        let sudoku = Sudoku::new(&board_string);
+        assert_eq!(sudoku.original_empty_cells, 0);
+    }
+
+    #[test]
+    fn test_from_string() {
+        let board_string =
+            "123456789000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let mut sudoku = Sudoku::new(
+            &"000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
+        );
+        sudoku.from_string(&board_string);
+        for i in 0..9 {
+            assert_eq!(sudoku.board[0][i], (i + 1) as u8);
+        }
+    }
+
+    #[test]
+    fn test_serialized() {
+        let board_string =
+            "123456789000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let sudoku = Sudoku::new(&board_string);
+        assert_eq!(sudoku.serialized(), board_string);
+    }
+
+    #[test]
+    fn test_unsolved() {
+        let board_string =
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let sudoku = Sudoku::new(&board_string);
+        assert!(sudoku.unsolved());
+
+        let board_string =
+            "123456789123456789123456789123456789123456789123456789123456789123456789123456789"
+                .to_string();
+        let sudoku = Sudoku::new(&board_string);
+        assert!(!sudoku.unsolved());
+    }
+
+    #[test]
+    fn test_can_place() {
+        let board_string =
+            "123456789000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let sudoku = Sudoku::new(&board_string);
+
+        for j in 0..9 {
+            for i in 0..9 {
+                assert!(!sudoku.can_place(j, i, i as u8 + 1));
+            }
+        }
+    }
+
+    #[test]
+    fn test_calc_all_notes() {
+        let board_string =
+            "120000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let mut sudoku = Sudoku::new(&board_string);
+        sudoku.calc_all_notes();
+
+        // Cell (0,0) has value 1, so notes should be empty
+        assert_eq!(sudoku.notes[0][0].len(), 0);
+
+        // Cell (0,1) has value 2, so notes should be empty
+        assert_eq!(sudoku.notes[0][1].len(), 0);
+
+        // Cell (0,2) should not have 1 or 2 in notes (same row)
+        assert!(!sudoku.notes[0][2].contains(&1));
+        assert!(!sudoku.notes[0][2].contains(&2));
+
+        // Cell (1,0) should not have 1 in notes (same column)
+        assert!(!sudoku.notes[1][0].contains(&1));
+
+        // Cell (1,1) should not have 2 in notes (same column)
+        assert!(!sudoku.notes[1][1].contains(&2));
+
+        // Cell (1,1) should not have 1 in notes (same box)
+        assert!(!sudoku.notes[1][1].contains(&1));
+    }
+
+    #[test]
+    fn test_set_num() {
+        let board_string =
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let mut sudoku = Sudoku::new(&board_string);
+        sudoku.calc_all_notes();
+
+        let notes_removed = sudoku.set_num(1, 0, 0);
+        assert_eq!(sudoku.board[0][0], 1);
+        assert!(notes_removed > 0);
+        assert!(!sudoku.notes[0][1].contains(&1)); // removed from row
+        assert!(!sudoku.notes[1][0].contains(&1)); // removed from column
+        assert!(!sudoku.notes[1][1].contains(&1)); // removed from box
+    }
+
+    #[test]
+    fn test_resolve_obvious_single() {
+        let board_string =
+            "120000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let mut sudoku = Sudoku::new(&board_string);
+        sudoku.calc_all_notes();
+
+        // Manually set up a situation where there's an obvious single
+        for num in 1..=9 {
+            if num != 3 {
+                sudoku.notes[0][2].remove(&num);
+            }
+        }
+
+        let notes_removed = sudoku.resolve_obvious_single();
+        assert_eq!(notes_removed, 19);
+        assert_eq!(sudoku.board[0][2], 3);
+    }
+
+    #[test]
+    fn test_resolve_last_digit() {
+        let board_string =
+            "123456780000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string();
+        let mut sudoku = Sudoku::new(&board_string);
+        sudoku.calc_all_notes();
+
+        let notes_removed = sudoku.resolve_last_digit();
+        assert_eq!(notes_removed, 13);
+        assert_eq!(sudoku.board[0][8], 9);
+    }
+
+    #[test]
+    fn test_strategy_enum() {
+        assert_eq!(Strategy::LastDigit.to_string(), "last digit");
+        assert_eq!(Strategy::ObviousSingle.to_string(), "obvious single");
+        assert_eq!(Strategy::HiddenSingle.to_string(), "hidden single");
+
+        assert_eq!(Strategy::LastDigit.difficulty(), 4);
+        assert_eq!(Strategy::ObviousSingle.difficulty(), 5);
+        assert_eq!(Strategy::XWing.difficulty(), 140);
+    }
+
+    #[test]
+    fn test_simple_sudoku_solution() {
+        // This is a very simple Sudoku that can be solved with just obvious singles
+        let board_string =
+            "123456789456789123789123456234567891567891234891234567345678912678912345912345678"
+                .to_string();
+        // Change one cell to empty
+        let mut chars: Vec<char> = board_string.chars().collect();
+        chars[0] = '0';
+        let board_string: String = chars.into_iter().collect();
+
+        let mut sudoku = Sudoku::new(&board_string);
+        sudoku.solve_puzzle();
+        assert_eq!(sudoku.board[0][0], 1);
+        assert!(!sudoku.unsolved());
+    }
+
+    #[test]
+    fn test_resolve_hidden_single() {
+        let mut sudoku = Sudoku::new(
+            &"000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
+        );
+        sudoku.calc_all_notes();
+
+        // Set up a hidden single in row 0
+        for i in 1..9 {
+            sudoku.notes[0][i].remove(&1);
+        }
+
+        let notes_removed = sudoku.resolve_hidden_single();
+        assert!(notes_removed > 0);
+        assert_eq!(sudoku.board[0][0], 1);
+    }
 }
