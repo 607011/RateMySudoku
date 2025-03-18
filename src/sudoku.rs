@@ -1081,43 +1081,36 @@ impl Sudoku {
     }
 
     fn remove_notes_in_row(&mut self, nums: &[u8], row: usize) -> usize {
-        let mut count = 0;
-        for col in 0..9 {
-            for num in nums {
-                if self.notes[row][col].remove(num) {
-                    count += 1;
-                }
-            }
-        }
-        count
+        (0..9)
+            .map(|col| {
+                nums.iter()
+                    .filter(|&num| self.notes[row][col].remove(num))
+                    .count()
+            })
+            .sum()
     }
 
     fn remove_notes_in_col(&mut self, nums: &[u8], col: usize) -> usize {
-        let mut count = 0;
-        for row in 0..9 {
-            for num in nums {
-                if self.notes[row][col].remove(num) {
-                    count += 1;
-                }
-            }
-        }
-        count
+        (0..9)
+            .map(|row| {
+                nums.iter()
+                    .filter(|&num| self.notes[row][col].remove(num))
+                    .count()
+            })
+            .sum()
     }
 
     fn remove_notes_in_box(&mut self, nums: &[u8], row: usize, col: usize) -> usize {
-        let mut count = 0;
         let start_row = 3 * (row / 3);
         let start_col = 3 * (col / 3);
-        for i in 0..3 {
-            for j in 0..3 {
-                for num in nums {
-                    if self.notes[start_row + i][start_col + j].remove(&num) {
-                        count += 1;
-                    }
-                }
-            }
-        }
-        count
+        (0..3)
+            .flat_map(|i| (0..3).map(move |j| (start_row + i, start_col + j)))
+            .map(|(r, c)| {
+                nums.iter()
+                    .filter(|&num| self.notes[r][c].remove(num))
+                    .count()
+            })
+            .sum()
     }
 
     /// Remove candidates from the notes in the same row, column, and box where we've set a digit.
