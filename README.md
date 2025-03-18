@@ -17,8 +17,8 @@ The following strategies are currently implemented:
 | Last Digit             | 1                |
 | Obvious Single         | 2                |
 | Hidden Single          | 3                |
-| Pointing Pair          | 3                |
-| Obvious Pair           | 4                |
-| Hidden Pair            | 5                |
+| Pointing Pair          | 4                |
+| Obvious Pair           | 5                |
+| Hidden Pair            | 6                |
 
 More to come …
