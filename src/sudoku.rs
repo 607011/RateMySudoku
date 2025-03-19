@@ -126,6 +126,11 @@ impl Sudoku {
 
     pub fn dump_rating(&self) {
         println!("Rating:");
+        let candidates_removed = self
+            .rating
+            .iter()
+            .map(|(_, &count)| count)
+            .sum::<usize>();
         let total_rating: i32 = self
             .rating
             .iter()
@@ -133,11 +138,11 @@ impl Sudoku {
             .sum();
         let difficulty = (total_rating as f64) / (self.original_empty_cells() as f64);
         println!("  Difficulty: {:.2}", difficulty);
-        println!("  Total candidates removed: {}; by …", total_rating);
+        println!("  Total candidates removed: {}; by …", candidates_removed);
         let mut strategies: Vec<(&Strategy, &usize)> = self.rating.iter().collect();
         strategies.sort_by_key(|(strategy, _)| strategy.difficulty());
         for (strategy, count) in strategies {
-            println!("  - {}: {}", strategy.to_string(), count);
+            println!("  - {} ({}): {}", strategy.to_string(), strategy.difficulty(), count);
         }
     }
 
