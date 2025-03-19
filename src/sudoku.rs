@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Strategy {
+    None,
     LastDigit,
     ObviousSingle,
     HiddenSingle,
@@ -14,6 +16,7 @@ pub enum Strategy {
 impl Strategy {
     fn to_string(&self) -> &str {
         match self {
+            Strategy::None => "none",
             Strategy::LastDigit => "last digit",
             Strategy::ObviousSingle => "obvious single",
             Strategy::HiddenSingle => "hidden single",
@@ -26,6 +29,7 @@ impl Strategy {
 
     fn difficulty(&self) -> i32 {
         match self {
+            Strategy::None => 0,
             Strategy::LastDigit => 4,
             Strategy::ObviousSingle => 5,
             Strategy::HiddenSingle => 14,
@@ -39,15 +43,46 @@ impl Strategy {
 
 const EMPTY: u8 = 0;
 
+#[allow(dead_code)]
+pub struct Note {
+    row: usize,
+    col: usize,
+    num: u8,
+}
+
+#[allow(dead_code)]
+pub struct StrategyResult {
+    strategy: Strategy,
+    candidates_affected: Vec<Note>,
+    candidates_about_to_be_removed: Vec<Note>,
+}
+
+pub struct Resolution {
+    nums_removed: usize,
+    strategy: Strategy,
+}
+
 #[derive(Debug, Clone)]
 pub struct Sudoku {
     board: [[u8; 9]; 9],
+    original_board:[[u8; 9]; 9],
     notes: [[HashSet<u8>; 9]; 9],
     nums_in_row: [HashSet<u8>; 9],
     nums_in_col: [HashSet<u8>; 9],
     nums_in_box: [HashSet<u8>; 9],
     rating: HashMap<Strategy, usize>,
-    original_empty_cells: usize,
+}
+
+impl fmt::Display for Sudoku {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for row in 0..9 {
+            for col in 0..9 {
+                write!(f, "{} ", self.board[row][col])?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
 }
 
 /// Represents a Sudoku puzzle and provides methods for solving and manipulating it.
@@ -62,14 +97,31 @@ pub struct Sudoku {
 impl Sudoku {
     pub fn new() -> Sudoku {
         Sudoku {
-            board: [[0; 9]; 9],
+            board: [[EMPTY; 9]; 9],
+            original_board: [[EMPTY; 9]; 9],
             notes: std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new())),
             nums_in_row: std::array::from_fn(|_| HashSet::new()),
             nums_in_col: std::array::from_fn(|_| HashSet::new()),
             nums_in_box: std::array::from_fn(|_| HashSet::new()),
             rating: HashMap::new(),
-            original_empty_cells: 0,
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.nums_in_box = std::array::from_fn(|_| HashSet::new());
+        self.nums_in_col = std::array::from_fn(|_| HashSet::new());
+        self.nums_in_row = std::array::from_fn(|_| HashSet::new());
+        self.notes = std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new()));
+        self.board = [[EMPTY; 9]; 9];
+        self.rating.clear();
+    }
+
+    fn original_empty_cells(&self) -> usize {
+        self.original_board
+            .iter()
+            .flatten()
+            .filter(|&&cell| cell == EMPTY)
+            .count()
     }
 
     pub fn dump_rating(&self) {
@@ -79,7 +131,7 @@ impl Sudoku {
             .iter()
             .map(|(strategy, &count)| strategy.difficulty() * count as i32)
             .sum();
-        let difficulty = (total_rating as f64) / (self.original_empty_cells as f64);
+        let difficulty = (total_rating as f64) / (self.original_empty_cells() as f64);
         println!("  Difficulty: {:.2}", difficulty);
         println!("  Total candidates removed: {}; by …", total_rating);
         let mut strategies: Vec<(&Strategy, &usize)> = self.rating.iter().collect();
@@ -92,6 +144,11 @@ impl Sudoku {
     fn unsolved(&self) -> bool {
         self.board.iter().any(|row| row.contains(&EMPTY))
     }
+
+    #[allow(dead_code)]
+    pub fn rating(&self) -> HashMap<Strategy, usize>{
+        self.rating.clone()
+    } 
 
     pub fn serialized(&self) -> String {
         self.board
@@ -1112,9 +1169,18 @@ impl Sudoku {
         count
     }
 
+    pub fn get_num(&self, row: usize, col: usize) -> u8 {
+        self.board[row][col]
+    }
+
+    #[allow(dead_code)]
+    pub fn get_notes(&self, row: usize, col: usize) -> HashSet<u8> {
+        self.notes[row][col].clone()
+    }
+
     /// Set a digit in the Sudoku board and remove its candidates from the notes.
     /// Return the number of notes removed.
-    fn set_num(&mut self, num: u8, row: usize, col: usize) -> usize {
+    pub fn set_num(&mut self, num: u8, row: usize, col: usize) -> usize {
         println!("Setting num {} in row {}, col {}", num, row, col);
         self.board[row][col] = num;
         self.nums_in_row[row].insert(num);
@@ -1126,6 +1192,126 @@ impl Sudoku {
         count
     }
 
+    pub fn prev_step(&mut self) -> Resolution {
+        Resolution { nums_removed: 0, strategy: Strategy::None }
+    }
+
+    pub fn next_step(&mut self) -> Resolution {
+        print!(
+            "\nApplying strategy '{}' ... ",
+            Strategy::LastDigit.to_string()
+        );
+        let mut nums_removed = self.resolve_last_digit();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::LastDigit)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::LastDigit,
+            };
+        }
+
+        print!(
+            "\nApplying strategy '{}' ... ",
+            Strategy::ObviousSingle.to_string()
+        );
+        nums_removed = self.resolve_obvious_single();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::ObviousSingle)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::ObviousSingle,
+            };
+        }
+
+        print!(
+            "\nApplying strategy '{}' ... ",
+            Strategy::HiddenSingle.to_string()
+        );
+        nums_removed = self.resolve_hidden_single();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::HiddenSingle)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::HiddenSingle,
+            };
+        }
+
+        print!(
+            "\nApplying strategy '{}' ... ",
+            Strategy::PointingPair.to_string()
+        );
+        nums_removed = self.resolve_pointing_pair();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::PointingPair)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::PointingPair,
+            };
+        }
+
+        print!(
+            "\nApplying strategy '{}' ... ",
+            Strategy::ObviousPair.to_string()
+        );
+        nums_removed = self.resolve_obvious_pair();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::ObviousPair)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::ObviousPair,
+            };
+        }
+
+        print!(
+            "\nApplying strategy '{}' ... ",
+            Strategy::HiddenPair.to_string()
+        );
+        nums_removed = self.resolve_hidden_pair();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::HiddenPair)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::HiddenPair,
+            };
+        }
+
+        print!("\nApplying strategy '{}' ... ", Strategy::XWing.to_string());
+        nums_removed = self.resolve_xwing();
+        if nums_removed > 0 {
+            self.rating
+                .entry(Strategy::XWing)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return Resolution {
+                nums_removed,
+                strategy: Strategy::XWing,
+            };
+        }
+
+        Resolution {
+            nums_removed: 0,
+            strategy: Strategy::LastDigit,
+        }
+    }
+
     /// Solve the Sudoku puzzle using human-like strategies
     fn solve_like_a_human(&mut self) {
         // the first step always is to calculate the notes
@@ -1133,96 +1319,8 @@ impl Sudoku {
         // since we're starting from scratch, we clear the rating
         self.rating.clear();
         while self.unsolved() {
-            let mut nums_removed: usize;
-
-            print!(
-                "\nApplying strategy '{}' ... ",
-                Strategy::LastDigit.to_string()
-            );
-            nums_removed = self.resolve_last_digit();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::LastDigit)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-            }
-
-            print!(
-                "\nApplying strategy '{}' ... ",
-                Strategy::ObviousSingle.to_string()
-            );
-            nums_removed = self.resolve_obvious_single();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::ObviousSingle)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-                continue;
-            }
-
-            print!(
-                "\nApplying strategy '{}' ... ",
-                Strategy::HiddenSingle.to_string()
-            );
-            nums_removed = self.resolve_hidden_single();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::HiddenSingle)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-                continue;
-            }
-
-            print!(
-                "\nApplying strategy '{}' ... ",
-                Strategy::PointingPair.to_string()
-            );
-            nums_removed = self.resolve_pointing_pair();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::PointingPair)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-                continue;
-            }
-
-            print!(
-                "\nApplying strategy '{}' ... ",
-                Strategy::ObviousPair.to_string()
-            );
-            nums_removed = self.resolve_obvious_pair();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::ObviousPair)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-                continue;
-            }
-
-            print!(
-                "\nApplying strategy '{}' ... ",
-                Strategy::HiddenPair.to_string()
-            );
-            nums_removed = self.resolve_hidden_pair();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::HiddenPair)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-                continue;
-            }
-
-            print!("\nApplying strategy '{}' ... ", Strategy::XWing.to_string());
-            nums_removed = self.resolve_xwing();
-            if nums_removed > 0 {
-                self.rating
-                    .entry(Strategy::XWing)
-                    .and_modify(|count| *count += nums_removed)
-                    .or_insert(nums_removed);
-                continue;
-            }
-
-            if nums_removed == 0 {
+            let result: Resolution = self.next_step();
+            if result.nums_removed == 0 && result.strategy == Strategy::None {
                 println!("\nNo more strategies to apply");
                 break;
             }
@@ -1262,19 +1360,25 @@ impl Sudoku {
         );
     }
 
+    pub fn restore(&mut self) {
+        self.board = self.original_board;
+        self.calc_all_notes();
+    }
+
     pub fn from_string(&mut self, board_string: &str) {
         if board_string.chars().filter(|c| c.is_digit(10)).count() != 81 {
-            panic!("Invalid Sudoku board: must contain exactly 81 numeric characters");
+            eprintln!("Invalid Sudoku board: must contain exactly 81 numeric characters");
         }
-        self.original_empty_cells = board_string.chars().filter(|&c| c == '0').count();
         let digits = board_string
             .chars()
             .filter_map(|c| c.to_digit(10).map(|d| d as u8))
             .take(81);
+        self.original_board = [[EMPTY; 9]; 9];
         for (idx, digit) in digits.enumerate() {
             let row = idx / 9;
             let col = idx % 9;
             self.board[row][col] = digit;
+            self.original_board[row][col] = digit;
         }
     }
 }
@@ -1296,23 +1400,6 @@ mod tests {
             sudoku.serialized(),
             "865431297479258316231697548513824769947563182628719453186375924754982631392146875"
         );
-    }
-
-    #[test]
-    fn test_new_sudoku() {
-        let board_string =
-            "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                .to_string();
-        let mut sudoku = Sudoku::new();
-        sudoku.from_string(&board_string);
-        assert_eq!(sudoku.original_empty_cells, 81);
-
-        let board_string =
-            "123456789123456789123456789123456789123456789123456789123456789123456789123456789"
-                .to_string();
-        let mut sudoku = Sudoku::new();
-        sudoku.from_string(&board_string);
-        assert_eq!(sudoku.original_empty_cells, 0);
     }
 
     #[test]

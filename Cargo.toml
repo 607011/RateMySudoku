@@ -2,9 +2,22 @@
 name = "sudoku"
 version = "0.1.0"
 edition = "2024"
+authors = ["Oliver Lau"]
+repository = "https://github.com/olau/sudoku-rust"
+license = "MIT"
+description = "A Sudoku puzzle solver and generator"
+keywords = ["sudoku", "puzzle", "game"]
+categories = ["games"]
+build = "src/rate.rs"
 
 [dependencies]
+eframe = { version = "^0.31", features = ["persistence"] }
+egui = { version = "^0.31", features = ["persistence"] }
+serde = { version = "1.0", features = ["derive"] }
 
+[[bin]]
+name = "sudokui"
+path = "src/ui.rs"
 
 [[bin]]
 name = "rate"
