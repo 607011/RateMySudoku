@@ -72,11 +72,8 @@ pub struct Resolution {
 #[derive(Debug, Clone)]
 pub struct Sudoku {
     board: [[u8; 9]; 9],
-    original_board:[[u8; 9]; 9],
+    original_board: [[u8; 9]; 9],
     notes: [[HashSet<u8>; 9]; 9],
-    nums_in_row: [HashSet<u8>; 9],
-    nums_in_col: [HashSet<u8>; 9],
-    nums_in_box: [HashSet<u8>; 9],
     rating: HashMap<Strategy, usize>,
 }
 
@@ -107,17 +104,11 @@ impl Sudoku {
             board: [[EMPTY; 9]; 9],
             original_board: [[EMPTY; 9]; 9],
             notes: std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new())),
-            nums_in_row: std::array::from_fn(|_| HashSet::new()),
-            nums_in_col: std::array::from_fn(|_| HashSet::new()),
-            nums_in_box: std::array::from_fn(|_| HashSet::new()),
             rating: HashMap::new(),
         }
     }
 
     pub fn clear(&mut self) {
-        self.nums_in_box = std::array::from_fn(|_| HashSet::new());
-        self.nums_in_col = std::array::from_fn(|_| HashSet::new());
-        self.nums_in_row = std::array::from_fn(|_| HashSet::new());
         self.notes = std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new()));
         self.board = [[EMPTY; 9]; 9];
         self.rating.clear();
@@ -255,10 +246,13 @@ impl Sudoku {
 
     pub fn calc_all_notes(&mut self) {
         // First calculate all the "used numbers" sets
+        let mut nums_in_row: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
+        let mut nums_in_col: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
+        let mut nums_in_box: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
         for i in 0..9 {
-            self.nums_in_row[i] = self.calc_nums_in_row(i);
-            self.nums_in_col[i] = self.calc_nums_in_col(i);
-            self.nums_in_box[i] = self.calc_nums_in_box(i);
+            nums_in_row[i] = self.calc_nums_in_row(i);
+            nums_in_col[i] = self.calc_nums_in_col(i);
+            nums_in_box[i] = self.calc_nums_in_box(i);
         }
 
         // Then populate notes for empty cells
@@ -270,13 +264,13 @@ impl Sudoku {
                 let box_idx = 3 * (row / 3) + col / 3;
                 let mut notes = (1..=9).collect::<HashSet<u8>>();
                 // Remove numbers already present in row, column, and box
-                for &num in &self.nums_in_row[row] {
+                for &num in &nums_in_row[row] {
                     notes.remove(&num);
                 }
-                for &num in &self.nums_in_col[col] {
+                for &num in &nums_in_col[col] {
                     notes.remove(&num);
                 }
-                for &num in &self.nums_in_box[box_idx] {
+                for &num in &nums_in_box[box_idx] {
                     notes.remove(&num);
                 }
                 self.notes[row][col] = notes;
@@ -1195,9 +1189,6 @@ impl Sudoku {
     pub fn set_num(&mut self, num: u8, row: usize, col: usize) -> usize {
         println!("Setting num {} in row {}, col {}", num, row, col);
         self.board[row][col] = num;
-        self.nums_in_row[row].insert(num);
-        self.nums_in_col[col].insert(num);
-        self.nums_in_box[3 * (row / 3) + col / 3].insert(num);
         let mut count = self.notes[row][col].len();
         self.notes[row][col].clear();
         count += self.remove_notes(&[num], row, col);
