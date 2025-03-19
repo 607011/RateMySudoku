@@ -124,11 +124,7 @@ impl Sudoku {
 
     pub fn dump_rating(&self) {
         println!("Rating:");
-        let candidates_removed = self
-            .rating
-            .iter()
-            .map(|(_, &count)| count)
-            .sum::<usize>();
+        let candidates_removed = self.rating.iter().map(|(_, &count)| count).sum::<usize>();
         let total_rating: i32 = self
             .rating
             .iter()
@@ -140,7 +136,12 @@ impl Sudoku {
         let mut strategies: Vec<(&Strategy, &usize)> = self.rating.iter().collect();
         strategies.sort_by_key(|(strategy, _)| strategy.difficulty());
         for (strategy, count) in strategies {
-            println!("  - {} ({}): {}", strategy.to_string(), strategy.difficulty(), count);
+            println!(
+                "  - {} ({}): {}",
+                strategy.to_string(),
+                strategy.difficulty(),
+                count
+            );
         }
     }
 
@@ -149,9 +150,9 @@ impl Sudoku {
     }
 
     #[allow(dead_code)]
-    pub fn rating(&self) -> HashMap<Strategy, usize>{
+    pub fn rating(&self) -> HashMap<Strategy, usize> {
         self.rating.clone()
-    } 
+    }
 
     pub fn serialized(&self) -> String {
         self.board
@@ -1196,7 +1197,10 @@ impl Sudoku {
     }
 
     pub fn prev_step(&mut self) -> Resolution {
-        Resolution { nums_removed: 0, strategy: Strategy::None }
+        Resolution {
+            nums_removed: 0,
+            strategy: Strategy::None,
+        }
     }
 
     pub fn next_step(&mut self) -> Resolution {
