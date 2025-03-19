@@ -51,8 +51,15 @@ pub struct Note {
 }
 
 #[allow(dead_code)]
+pub struct Coord {
+    row: usize,
+    col: usize,
+}
+
+#[allow(dead_code)]
 pub struct StrategyResult {
     strategy: Strategy,
+    cell_affected: Coord,
     candidates_affected: Vec<Note>,
     candidates_about_to_be_removed: Vec<Note>,
 }
