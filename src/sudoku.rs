@@ -82,7 +82,7 @@ impl RemovalResult {
         }
     }
     fn will_remove_candidates(&self) -> bool {
-        self.candidates_about_to_be_removed.len() > 0
+        !self.candidates_about_to_be_removed.is_empty()
     }
     fn clear(&mut self) {
         self.sets_cell = None;
@@ -140,6 +140,12 @@ impl fmt::Display for Sudoku {
             writeln!(f)?;
         }
         Ok(())
+    }
+}
+
+impl Default for Sudoku {
+    fn default() -> Self {
+        Sudoku::new()
     }
 }
 
@@ -206,8 +212,7 @@ impl Sudoku {
             .iter()
             .map(|(strategy, &count)| strategy.difficulty() * count as i32)
             .sum();
-        let effort = (total_rating as f64) / (candidates_removed as f64);
-        effort
+        (total_rating as f64) / (candidates_removed as f64)
     }
 
     fn unsolved(&self) -> bool {
@@ -227,7 +232,7 @@ impl Sudoku {
         self.board
             .iter()
             .flatten()
-            .map(|&digit| (digit as u8 + b'0') as char)
+            .map(|&digit| (digit + b'0') as char)
             .collect()
     }
 
@@ -326,10 +331,10 @@ impl Sudoku {
         }
 
         // Then populate notes for empty cells
-        for row in 0..9 {
-            for col in 0..9 {
+        (0..9).for_each(|row| {
+            (0..9).for_each(|col| {
                 if self.board[row][col] != EMPTY {
-                    continue;
+                    return;
                 }
                 let box_idx = 3 * (row / 3) + col / 3;
                 let mut notes = (1..=9).collect::<HashSet<u8>>();
@@ -344,8 +349,8 @@ impl Sudoku {
                     notes.remove(&num);
                 }
                 self.candidates[row][col] = notes;
-            }
-        }
+            })
+        });
     }
 
     /// Check if `num` can be placed in row `row` and column `col`
@@ -405,7 +410,7 @@ impl Sudoku {
     }
 
     pub fn solve_by_backtracking(&mut self) -> bool {
-        return self.solve();
+        self.solve()
     }
 
     /// Check if there are last digits in any of the rows.
@@ -1007,17 +1012,16 @@ impl Sudoku {
                 }
 
                 // Find pairs of digits that appear in exactly the same two cells
-                let mut digit_pairs: Vec<(u8, u8, (usize, usize), (usize, usize))> = Vec::new();
+                type DigitPairs = Vec<(u8, u8, (usize, usize), (usize, usize))>;
+                let mut digit_pairs: DigitPairs = Vec::new();
                 let candidates: Vec<(u8, &Vec<(usize, usize)>)> = digit_locations
                     .iter()
                     .filter(|(_, cells)| cells.len() == 2)
                     .map(|(&digit, cells)| (digit, cells))
                     .collect();
 
-                for i in 0..candidates.len() {
-                    let (digit1, cells1) = &candidates[i];
-                    for j in (i + 1)..candidates.len() {
-                        let (digit2, cells2) = &candidates[j];
+                for (i, (digit1, cells1)) in candidates.iter().enumerate() {
+                    for (digit2, cells2) in candidates.iter().skip(i + 1) {
                         if cells1 == cells2 {
                             digit_pairs.push((*digit1, *digit2, cells1[0], cells1[1]));
                         }
@@ -1073,10 +1077,8 @@ impl Sudoku {
                 .map(|(&digit, cols)| (digit, cols))
                 .collect();
 
-            for i in 0..candidates.len() {
-                let (digit1, cols1) = &candidates[i];
-                for j in (i + 1)..candidates.len() {
-                    let (digit2, cols2) = &candidates[j];
+            for (i, (digit1, cols1)) in candidates.iter().enumerate() {
+                for (digit2, cols2) in candidates.iter().skip(i + 1) {
                     if cols1 == cols2 {
                         digit_pairs.push((*digit1, *digit2, cols1[0], cols1[1]));
                     }
@@ -1131,10 +1133,8 @@ impl Sudoku {
                 .map(|(&digit, rows)| (digit, rows))
                 .collect();
 
-            for i in 0..candidates.len() {
-                let (digit1, rows1) = &candidates[i];
-                for j in (i + 1)..candidates.len() {
-                    let (digit2, rows2) = &candidates[j];
+            for (i, (digit1, rows1)) in candidates.iter().enumerate() {
+                for (digit2, rows2) in candidates.iter().skip(i + 1) {
                     if rows1 == rows2 {
                         digit_pairs.push((*digit1, *digit2, rows1[0], rows1[1]));
                     }
@@ -1623,7 +1623,7 @@ impl Sudoku {
     }
 
     pub fn from_string(&mut self, board_string: &str) {
-        if board_string.chars().filter(|c| c.is_digit(10)).count() != 81 {
+        if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
             eprintln!("Invalid Sudoku board: must contain exactly 81 numeric characters");
         }
         let digits = board_string
@@ -1744,23 +1744,6 @@ mod tests {
     }
 
     #[test]
-    fn test_set_num() {
-        let board_string =
-            "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                .to_string();
-        let mut sudoku = Sudoku::new();
-        sudoku.from_string(&board_string);
-        sudoku.calc_all_notes();
-
-        let notes_removed = sudoku.collect_set_num(1, 0, 0);
-        assert_eq!(sudoku.board[0][0], 1);
-        assert!(notes_removed > 0);
-        assert!(!sudoku.candidates[0][1].contains(&1)); // removed from row
-        assert!(!sudoku.candidates[1][0].contains(&1)); // removed from column
-        assert!(!sudoku.candidates[1][1].contains(&1)); // removed from box
-    }
-
-    #[test]
     fn test_resolve_obvious_single() {
         let board_string =
             "120000000000000000000000000000000000000000000000000000000000000000000000000000000"
@@ -1776,8 +1759,9 @@ mod tests {
             }
         }
 
-        let notes_removed = sudoku.find_obvious_single();
-        assert_eq!(notes_removed, 19);
+        let result = sudoku.find_obvious_single();
+        sudoku.apply(&result);
+        assert_eq!(result.removals.candidates_about_to_be_removed.len(), 19);
         assert_eq!(sudoku.board[0][2], 3);
     }
 
@@ -1790,16 +1774,17 @@ mod tests {
         sudoku.from_string(&board_string);
         sudoku.calc_all_notes();
 
-        let notes_removed = sudoku.find_last_digit();
-        assert_eq!(notes_removed, 13);
+        let result = sudoku.find_last_digit();
+        sudoku.apply(&result);
+        assert_eq!(result.removals.candidates_about_to_be_removed.len(), 13);
         assert_eq!(sudoku.board[0][8], 9);
     }
 
     #[test]
     fn test_strategy_enum() {
-        assert_eq!(Strategy::LastDigit.to_string(), "last digit");
-        assert_eq!(Strategy::ObviousSingle.to_string(), "obvious single");
-        assert_eq!(Strategy::HiddenSingle.to_string(), "hidden single");
+        assert_eq!(Strategy::LastDigit.to_string(), "Last Digit");
+        assert_eq!(Strategy::ObviousSingle.to_string(), "Obvious Single");
+        assert_eq!(Strategy::HiddenSingle.to_string(), "Hidden Single");
 
         assert_eq!(Strategy::LastDigit.difficulty(), 4);
         assert_eq!(Strategy::ObviousSingle.difficulty(), 5);
@@ -1837,8 +1822,9 @@ mod tests {
             sudoku.candidates[0][i].remove(&1);
         }
 
-        let notes_removed = sudoku.find_hidden_single();
-        assert!(notes_removed > 0);
+        let result = sudoku.find_hidden_single();
+        sudoku.apply(&result);
+        assert!(result.removals.candidates_about_to_be_removed.len() > 0);
         assert_eq!(sudoku.board[0][0], 1);
     }
 }

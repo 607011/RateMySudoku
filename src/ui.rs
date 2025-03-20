@@ -287,7 +287,10 @@ impl eframe::App for SudokuApp {
                     let status_text = if self.strategy_result.strategy != Strategy::None {
                         format!("Strategy: {}", self.strategy_result.strategy)
                     } else if self.sudoku.is_solved() {
-                        std::fmt::format(format_args!("Solved! Effort: {:.1}", self.sudoku.effort()))
+                        std::fmt::format(format_args!(
+                            "Solved! Effort: {:.1}",
+                            self.sudoku.effort()
+                        ))
                     } else {
                         "Ready".to_string()
                     };
