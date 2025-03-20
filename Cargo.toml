@@ -8,7 +8,6 @@ license = "MIT"
 description = "A Sudoku puzzle solver and generator"
 keywords = ["sudoku", "puzzle", "game"]
 categories = ["games"]
-build = "src/rate.rs"
 
 [dependencies]
 eframe = { version = "^0.31", features = ["persistence"] }
