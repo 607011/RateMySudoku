@@ -1629,8 +1629,7 @@ impl Sudoku {
     }
 
     pub fn restore(&mut self) {
-        self.board = self.original_board;
-        self.calc_all_notes();
+        self.from_string(&self.original_board());
     }
 
     pub fn from_string(&mut self, board_string: &str) {
