@@ -8,15 +8,15 @@ use eframe::egui;
 use egui::{Color32, Event, FontId, Pos2, Rect, Stroke, Vec2};
 use serde::{Deserialize, Serialize};
 
-static APP_KEY: &str = "sudokui";
+static APP_NAME: &str = "Sudokui";
 
 enum State {
-    None,
+    CalculateNotes,
     TryingStrategy,
     ApplyingStrategy,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 struct AppSettings {
     sudoku_string: String,
 }
@@ -36,7 +36,7 @@ impl SudokuApp {
             },
             sudoku: Sudoku::new(),
             strategy_result: StrategyResult::empty(),
-            state: State::None,
+            state: State::CalculateNotes,
         }
     }
 
@@ -241,7 +241,6 @@ impl eframe::App for SudokuApp {
                             return false;
                         }
                         self.sudoku.from_string(&digits);
-                        self.sudoku.calc_all_notes();
                         self.settings.sudoku_string = digits;
                         true
                     } else {
@@ -256,13 +255,20 @@ impl eframe::App for SudokuApp {
                 ui.horizontal(|ui| {
                     if ui.button("|<<").clicked() {
                         self.sudoku.restore();
+                        self.state = State::CalculateNotes;
+                        ctx.request_repaint();
                     }
                     if ui.button("<").clicked() {
                         self.sudoku.prev_step();
+                        ctx.request_repaint();
                     }
                     if ui.button(">").clicked() {
                         match self.state {
-                            State::None | State::TryingStrategy => {
+                            State::CalculateNotes => {
+                                self.sudoku.calc_all_notes();
+                                self.state = State::TryingStrategy;
+                            }
+                            State::TryingStrategy => {
                                 self.strategy_result = self.sudoku.next_step();
                                 println!("{:?}", self.strategy_result);
                                 self.state = State::ApplyingStrategy;
@@ -302,22 +308,24 @@ impl eframe::App for SudokuApp {
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
+        println!("Saving settings: {:?}", self.settings);
         eframe::set_value(storage, eframe::APP_KEY, &self.settings);
     }
 }
 
 impl SudokuApp {
-    fn load(&mut self, _storage: &dyn Storage) {
-        if let Some(path) = eframe::storage_dir(APP_KEY) {
+    fn load(&mut self, storage: &dyn Storage) {
+        self.sudoku.from_string(
+            "008000063030000000000047120006000000001830400000901700000408031000500204200000000",
+        );
+        if let Some(path) = eframe::storage_dir(APP_NAME) {
             println!("Trying to load saved sudoku from {}", path.display());
         }
-        self.sudoku.from_string(
-            "100700000000019030004800000020000050943000080608002900000000000092051700070040020",
-        );
-        // if let Some(settings) = eframe::get_value::<AppSettings>(storage, eframe::APP_KEY) {
-        //     self.sudoku.from_string(&settings.sudoku_string);
-        // }
-        self.sudoku.calc_all_notes();
+        if let Some(settings) = eframe::get_value::<AppSettings>(storage, eframe::APP_KEY) {
+            println!("Loaded sudoku from storage: {}", settings.sudoku_string);
+            self.sudoku.from_string(&settings.sudoku_string);
+        }
+        self.settings.sudoku_string = self.sudoku.serialized();
     }
 }
 
@@ -330,7 +338,7 @@ impl Default for SudokuApp {
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions::default();
     eframe::run_native(
-        "Sudokui",
+        APP_NAME,
         options,
         Box::new(|cc| {
             let mut app = SudokuApp::default();
