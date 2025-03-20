@@ -174,6 +174,14 @@ impl Sudoku {
         self.rating.clear();
     }
 
+    pub fn original_board(&self) -> String {
+        self.original_board
+            .iter()
+            .flatten()
+            .map(|&digit| (digit + b'0') as char)
+            .collect()
+    }
+
     fn original_empty_cells(&self) -> usize {
         self.original_board
             .iter()
