@@ -1468,6 +1468,7 @@ impl Sudoku {
     /// Undo the last step.
     /// XXX: This is not implemented yet.
     pub fn prev_step(&mut self) -> Resolution {
+        eprintln!("Undo last step not implemented yet");
         Resolution {
             nums_removed: 0,
             strategy: Strategy::None,
