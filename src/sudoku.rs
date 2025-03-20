@@ -89,6 +89,12 @@ impl fmt::Display for Sudoku {
     }
 }
 
+impl Default for Sudoku {
+    fn default() -> Self {
+        Sudoku::new()
+    }
+}
+
 /// Represents a Sudoku puzzle and provides methods for solving and manipulating it.
 ///
 /// The `Sudoku` struct contains the following fields:
@@ -158,7 +164,7 @@ impl Sudoku {
         self.board
             .iter()
             .flatten()
-            .map(|&digit| (digit as u8 + b'0') as char)
+            .map(|&digit| (digit + b'0') as char)
             .collect()
     }
 
@@ -257,10 +263,10 @@ impl Sudoku {
         }
 
         // Then populate notes for empty cells
-        for row in 0..9 {
-            for col in 0..9 {
+        (0..9).for_each(|row| {
+            (0..9).for_each(|col| {
                 if self.board[row][col] != EMPTY {
-                    continue;
+                    return;
                 }
                 let box_idx = 3 * (row / 3) + col / 3;
                 let mut notes = (1..=9).collect::<HashSet<u8>>();
@@ -275,8 +281,8 @@ impl Sudoku {
                     notes.remove(&num);
                 }
                 self.notes[row][col] = notes;
-            }
-        }
+            })
+        });
     }
 
     /// Check if `num` can be placed in row `row` and column `col`
@@ -336,7 +342,7 @@ impl Sudoku {
     }
 
     pub fn solve_by_backtracking(&mut self) -> bool {
-        return self.solve();
+        self.solve()
     }
 
     /// Check if there are last digits in any of the rows.
@@ -843,17 +849,16 @@ impl Sudoku {
                 }
 
                 // Find pairs of digits that appear in exactly the same two cells
-                let mut digit_pairs: Vec<(u8, u8, (usize, usize), (usize, usize))> = Vec::new();
+                type DigitPairs = Vec<(u8, u8, (usize, usize), (usize, usize))>;
+                let mut digit_pairs: DigitPairs = Vec::new();
                 let candidates: Vec<(u8, &Vec<(usize, usize)>)> = digit_locations
                     .iter()
                     .filter(|(_, cells)| cells.len() == 2)
                     .map(|(&digit, cells)| (digit, cells))
                     .collect();
 
-                for i in 0..candidates.len() {
-                    let (digit1, cells1) = &candidates[i];
-                    for j in (i + 1)..candidates.len() {
-                        let (digit2, cells2) = &candidates[j];
+                for (i, (digit1, cells1)) in candidates.iter().enumerate() {
+                    for (digit2, cells2) in candidates.iter().skip(i + 1) {
                         if cells1 == cells2 {
                             digit_pairs.push((*digit1, *digit2, cells1[0], cells1[1]));
                         }
@@ -909,10 +914,8 @@ impl Sudoku {
                 .map(|(&digit, cols)| (digit, cols))
                 .collect();
 
-            for i in 0..candidates.len() {
-                let (digit1, cols1) = &candidates[i];
-                for j in (i + 1)..candidates.len() {
-                    let (digit2, cols2) = &candidates[j];
+            for (i, (digit1, cols1)) in candidates.iter().enumerate() {
+                for (digit2, cols2) in candidates.iter().skip(i + 1) {
                     if cols1 == cols2 {
                         digit_pairs.push((*digit1, *digit2, cols1[0], cols1[1]));
                     }
@@ -965,10 +968,8 @@ impl Sudoku {
                 .map(|(&digit, rows)| (digit, rows))
                 .collect();
 
-            for i in 0..candidates.len() {
-                let (digit1, rows1) = &candidates[i];
-                for j in (i + 1)..candidates.len() {
-                    let (digit2, rows2) = &candidates[j];
+            for (i, (digit1, rows1)) in candidates.iter().enumerate() {
+                for (digit2, rows2) in candidates.iter().skip(i + 1) {
                     if rows1 == rows2 {
                         digit_pairs.push((*digit1, *digit2, rows1[0], rows1[1]));
                     }
@@ -1373,7 +1374,7 @@ impl Sudoku {
     }
 
     pub fn from_string(&mut self, board_string: &str) {
-        if board_string.chars().filter(|c| c.is_digit(10)).count() != 81 {
+        if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
             eprintln!("Invalid Sudoku board: must contain exactly 81 numeric characters");
         }
         let digits = board_string
