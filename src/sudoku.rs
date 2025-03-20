@@ -1635,7 +1635,9 @@ impl Sudoku {
     pub fn from_string(&mut self, board_string: &str) {
         if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
             eprintln!("Invalid Sudoku board: must contain exactly 81 numeric characters");
+            return;
         }
+        self.clear();
         let digits = board_string
             .chars()
             .filter_map(|c| c.to_digit(10).map(|d| d as u8))
