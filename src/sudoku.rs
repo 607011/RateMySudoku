@@ -829,6 +829,9 @@ impl Sudoku {
                         result
                             .candidates_affected
                             .extend(pair.iter().map(|&num| Candidate { row, col, num }));
+                        result
+                            .candidates_affected
+                            .extend(pair.iter().map(|&num| Candidate { row, col: i, num }));
                         return result;
                     }
                 }
