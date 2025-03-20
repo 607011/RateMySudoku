@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod sudoku;
-use sudoku::Sudoku;
+use sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku};
 
 use eframe::Storage;
 use eframe::egui;
@@ -9,6 +9,12 @@ use egui::{Color32, Event, FontId, Pos2, Rect, Stroke, Vec2};
 use serde::{Deserialize, Serialize};
 
 static APP_KEY: &str = "sudokui";
+
+enum State {
+    None,
+    TryingStrategy,
+    ApplyingStrategy,
+}
 
 #[derive(Default, Serialize, Deserialize)]
 struct AppSettings {
@@ -18,6 +24,8 @@ struct AppSettings {
 struct SudokuApp {
     settings: AppSettings,
     sudoku: Sudoku,
+    strategy_result: StrategyResult,
+    state: State,
 }
 
 impl SudokuApp {
@@ -27,6 +35,8 @@ impl SudokuApp {
                 sudoku_string: String::new(),
             },
             sudoku: Sudoku::new(),
+            strategy_result: StrategyResult::empty(),
+            state: State::None,
         }
     }
 
@@ -65,10 +75,8 @@ impl SudokuApp {
             let rel_pos = mouse_pos - response.rect.min;
             let cell_x = (rel_pos.x / cell_size) as usize;
             let cell_y = (rel_pos.y / cell_size) as usize;
-
             if cell_x < 9 && cell_y < 9 {
-                // Handle cell selection - you can add code here to select a cell
-                // and handle keyboard input for it
+                // Handle cell selection
             }
         }
 
@@ -77,7 +85,7 @@ impl SudokuApp {
         // Draw filled cells for digits
         for row in 0..9 {
             for col in 0..9 {
-                if sudoku.get_num(row, col) != 0 {
+                if sudoku.get_num(row, col) != EMPTY {
                     // Draw filled background for cells with values
                     painter.rect_filled(
                         Rect::from_min_size(
@@ -168,6 +176,45 @@ impl SudokuApp {
                                 cell_rect.min.y + note_row as f32 * note_size + note_size / 2.0,
                             );
 
+                            // Check if this note is in the affected cells
+                            let highlight_affected = self
+                                .strategy_result
+                                .removals
+                                .candidates_affected
+                                .iter()
+                                .any(|cell| cell.row == row && cell.col == col && cell.num == n);
+
+                            let highlight_about_to_be_removed = self
+                                .strategy_result
+                                .removals
+                                .candidates_about_to_be_removed
+                                .iter()
+                                .any(|cell| cell.row == row && cell.col == col && cell.num == n);
+
+                            if highlight_affected {
+                                let highlight_rect = Rect::from_center_size(
+                                    note_pos,
+                                    Vec2::new(note_size * 0.8, note_size * 0.8),
+                                );
+                                painter.rect_filled(
+                                    highlight_rect,
+                                    2.0,
+                                    Color32::from_rgb(200, 255, 200), // Light green
+                                );
+                            }
+                            // Draw green background for affected notes
+                            if highlight_about_to_be_removed && !highlight_affected {
+                                let highlight_rect = Rect::from_center_size(
+                                    note_pos,
+                                    Vec2::new(note_size * 0.8, note_size * 0.8),
+                                );
+                                painter.rect_filled(
+                                    highlight_rect,
+                                    2.0,
+                                    Color32::from_rgb(255, 200, 200), // Light red
+                                );
+                            }
+
                             painter.text(
                                 note_pos,
                                 egui::Align2::CENTER_CENTER,
@@ -214,11 +261,37 @@ impl eframe::App for SudokuApp {
                         self.sudoku.prev_step();
                     }
                     if ui.button(">").clicked() {
-                        self.sudoku.next_step();
+                        match self.state {
+                            State::None | State::TryingStrategy => {
+                                self.strategy_result = self.sudoku.next_step();
+                                println!("{:?}", self.strategy_result);
+                                self.state = State::ApplyingStrategy;
+                            }
+                            State::ApplyingStrategy => {
+                                let resolution: Resolution =
+                                    self.sudoku.apply(&self.strategy_result);
+                                println!("{:?}", resolution);
+                                self.strategy_result.clear();
+                                self.state = State::TryingStrategy;
+                            }
+                        }
+                        ctx.request_repaint();
                     }
                     if ui.button(">>|").clicked() {
+                        self.strategy_result.clear();
                         self.sudoku.solve_by_backtracking();
+                        ctx.request_repaint();
                     }
+
+                    // Status information display
+                    let status_text = if self.strategy_result.strategy != Strategy::None {
+                        format!("Strategy: {}", self.strategy_result.strategy)
+                    } else if self.sudoku.is_solved() {
+                        std::fmt::format(format_args!("Solved! Effort: {:.1}", self.sudoku.effort()))
+                    } else {
+                        "Ready".to_string()
+                    };
+                    ui.label(status_text);
                 });
                 self.draw(ui);
             });
@@ -231,14 +304,17 @@ impl eframe::App for SudokuApp {
 }
 
 impl SudokuApp {
-    fn load(&mut self, storage: &dyn Storage) {
+    fn load(&mut self, _storage: &dyn Storage) {
         if let Some(path) = eframe::storage_dir(APP_KEY) {
             println!("Trying to load saved sudoku from {}", path.display());
         }
-        if let Some(settings) = eframe::get_value::<AppSettings>(storage, eframe::APP_KEY) {
-            self.sudoku.from_string(&settings.sudoku_string);
-            self.sudoku.calc_all_notes();
-        }
+        self.sudoku.from_string(
+            "100700000000019030004800000020000050943000080608002900000000000092051700070040020",
+        );
+        // if let Some(settings) = eframe::get_value::<AppSettings>(storage, eframe::APP_KEY) {
+        //     self.sudoku.from_string(&settings.sudoku_string);
+        // }
+        self.sudoku.calc_all_notes();
     }
 }
 
