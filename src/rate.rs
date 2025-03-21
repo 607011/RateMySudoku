@@ -1,4 +1,4 @@
-pub mod sudoku;
+use rate_my_sudoku::Sudoku;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -10,8 +10,8 @@ fn main() {
         println!("Please provide a string of length 81");
         return;
     }
-    let mut s0 = sudoku::Sudoku::new();
-    s0.from_string(&args[1]);
+    let mut s0 = Sudoku::new();
+    s0.set_board_string(&args[1]);
     let start = std::time::Instant::now();
     s0.solve_puzzle();
     let duration = start.elapsed();
@@ -21,8 +21,8 @@ fn main() {
     );
 
     let start = std::time::Instant::now();
-    let mut s1 = sudoku::Sudoku::new();
-    s1.from_string(&args[1]);
+    let mut s1 = Sudoku::new();
+    s1.set_board_string(&args[1]);
     s1.solve_by_backtracking();
     let duration = start.elapsed();
     println!(

@@ -1,16 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod sudoku;
-use sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku, Unit};
-
-use log;
+use rate_my_sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku, Unit};
 
 use eframe::Storage;
 use eframe::egui;
 use egui::{Color32, Event, FontId, Pos2, Rect, Stroke, Vec2};
-
-#[cfg(not(target_arch = "wasm32"))]
-use egui::OutputCommand;
 
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +48,7 @@ impl Default for SudokuApp {
         let mut sudoku = Sudoku::new();
         let sudoku_string =
             "008000063030000000000047120006000000001830400000901700000408031000500204200000000";
-        sudoku.from_string(sudoku_string);
+        sudoku.set_board_string(sudoku_string);
         Self {
             settings: AppSettings {
                 sudoku_string: sudoku_string.to_string(),
@@ -351,11 +345,11 @@ impl eframe::App for SudokuApp {
                         if digits.len() != 81 {
                             return false;
                         }
-                        self.sudoku.from_string(&digits);
+                        self.sudoku.set_board_string(&digits);
                         self.settings.sudoku_string = digits;
                         true
                     } else if let Event::Copy = e {
-                        println!("Copying {} to clipboard", self.sudoku.serialized());
+                        log::info!("Copying {} to clipboard", self.sudoku.serialized());
                         // the next line freezes the app
                         self.handle_clipboard_copy(&self.sudoku.serialized(), ctx);
                         true
@@ -433,15 +427,15 @@ impl eframe::App for SudokuApp {
 impl SudokuApp {
     #[cfg(not(target_arch = "wasm32"))]
     fn load(&mut self, storage: &dyn Storage) {
-        self.sudoku.from_string(
+        self.sudoku.set_board_string(
             "008000063030000000000047120006000000001830400000901700000408031000500204200000000",
         );
         if let Some(path) = eframe::storage_dir(APP_NAME) {
-            println!("Trying to load saved sudoku from {}", path.display());
+            log::info!("Trying to load saved sudoku from {}", path.display());
         }
         if let Some(settings) = eframe::get_value::<AppSettings>(storage, eframe::APP_KEY) {
-            println!("Loaded sudoku from storage: {}", settings.sudoku_string);
-            self.sudoku.from_string(&settings.sudoku_string);
+            log::info!("Loaded sudoku from storage: {}", settings.sudoku_string);
+            self.sudoku.set_board_string(&settings.sudoku_string);
         }
         self.settings.sudoku_string = self.sudoku.serialized();
     }
@@ -454,12 +448,12 @@ impl SudokuApp {
             }
             State::TryingStrategy => {
                 self.strategy_result = self.sudoku.next_step();
-                println!("{:?}", self.strategy_result);
+                log::info!("{:?}", self.strategy_result);
                 self.state = State::ApplyingStrategy;
             }
             State::ApplyingStrategy => {
                 let resolution: Resolution = self.sudoku.apply(&self.strategy_result);
-                println!("{:?}", resolution);
+                log::info!("{:?}", resolution);
                 self.strategy_result.clear();
                 self.state = State::TryingStrategy;
             }
