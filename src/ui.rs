@@ -1,13 +1,21 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-pub mod sudoku;
-use sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku};
+mod sudoku;
+use sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku, Unit};
+
+use log;
 
 use eframe::Storage;
 use eframe::egui;
 use egui::{Color32, Event, FontId, Pos2, Rect, Stroke, Vec2};
+
+#[cfg(not(target_arch = "wasm32"))]
+use egui::OutputCommand;
+
+#[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(target_arch = "wasm32"))]
 static APP_NAME: &str = "Sudokui";
 
 enum State {
@@ -16,19 +24,52 @@ enum State {
     ApplyingStrategy,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Serialize, Deserialize)]
 struct AppSettings {
     sudoku_string: String,
 }
 
-struct SudokuApp {
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Serialize, Deserialize)]
+struct AppSettings {
+    sudoku_string: String,
+}
+
+
+pub struct SudokuApp {
     settings: AppSettings,
     sudoku: Sudoku,
     strategy_result: StrategyResult,
     state: State,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for SudokuApp {
+    fn default() -> Self {
+        SudokuApp::new()
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Default for SudokuApp {
+    fn default() -> Self {
+        let mut sudoku = Sudoku::new();
+        let sudoku_string = "008000063030000000000047120006000000001830400000901700000408031000500204200000000";
+        sudoku.from_string(sudoku_string);
+        Self {
+            settings: AppSettings {
+                sudoku_string: sudoku_string.to_string(),
+            },
+            sudoku,
+            strategy_result: StrategyResult::empty(),
+            state: State::CalculateNotes,
+        }
+    }
+}
+
 impl SudokuApp {
+    #[cfg(not(target_arch = "wasm32"))]
     fn new() -> Self {
         SudokuApp {
             settings: AppSettings {
@@ -38,6 +79,14 @@ impl SudokuApp {
             strategy_result: StrategyResult::empty(),
             state: State::CalculateNotes,
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+        // if let Some(storage) = cc.storage {
+        //     return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+        // }
+        Default::default()
     }
 
     pub fn draw(&self, ui: &mut egui::Ui) {
@@ -98,6 +147,62 @@ impl SudokuApp {
                         0.0,
                         filled_cell_color,
                     );
+                    match &self.strategy_result.removals.unit_index {
+                        None => {}
+                        Some(unit_index) => match self.strategy_result.removals.unit {
+                            None => {}
+                            Some(Unit::Row) => {
+                                if !unit_index.contains(&row) {
+                                    painter.rect_filled(
+                                        Rect::from_min_size(
+                                            Pos2::new(
+                                                response.rect.min.x,
+                                                response.rect.min.y + row as f32 * cell_size,
+                                            ),
+                                            Vec2::new(board_size, cell_size),
+                                        ),
+                                        0.0,
+                                        Color32::from_gray(200),
+                                    );
+                                }
+                            }
+                            Some(Unit::Column) => {
+                                if !unit_index.contains(&col) {
+                                    painter.rect_filled(
+                                        Rect::from_min_size(
+                                            Pos2::new(
+                                                response.rect.min.x + col as f32 * cell_size,
+                                                response.rect.min.y,
+                                            ),
+                                            Vec2::new(cell_size, board_size),
+                                        ),
+                                        0.0,
+                                        Color32::from_gray(200),
+                                    );
+                                }
+                            }
+                            Some(Unit::Box) => {
+                                let box_row = row / 3;
+                                let box_col = col / 3;
+                                let box_index = box_row * 3 + box_col;
+                                if !unit_index.contains(&box_index) {
+                                    painter.rect_filled(
+                                        Rect::from_min_size(
+                                            Pos2::new(
+                                                response.rect.min.x
+                                                    + box_col as f32 * 3.0 * cell_size,
+                                                response.rect.min.y
+                                                    + box_row as f32 * 3.0 * cell_size,
+                                            ),
+                                            Vec2::new(3.0 * cell_size, 3.0 * cell_size),
+                                        ),
+                                        0.0,
+                                        Color32::from_gray(200),
+                                    );
+                                }
+                            }
+                        },
+                    }
                 }
             }
         }
@@ -152,7 +257,7 @@ impl SudokuApp {
                     Vec2::new(cell_size, cell_size),
                 );
 
-                if sudoku.get_num(row, col) != 0 {
+                if sudoku.get_num(row, col) != EMPTY {
                     // Draw the digit for filled cells
                     let digit = sudoku.get_num(row, col).to_string();
                     painter.text(
@@ -191,7 +296,7 @@ impl SudokuApp {
                                 .iter()
                                 .any(|cell| cell.row == row && cell.col == col && cell.num == n);
 
-                            if highlight_affected {
+                            if highlight_affected && !highlight_about_to_be_removed {
                                 let highlight_rect = Rect::from_center_size(
                                     note_pos,
                                     Vec2::new(note_size * 0.8, note_size * 0.8),
@@ -201,9 +306,7 @@ impl SudokuApp {
                                     2.0,
                                     Color32::from_rgb(200, 255, 200), // Light green
                                 );
-                            }
-                            // Draw green background for affected notes
-                            if highlight_about_to_be_removed && !highlight_affected {
+                            } else if highlight_about_to_be_removed && !highlight_affected {
                                 let highlight_rect = Rect::from_center_size(
                                     note_pos,
                                     Vec2::new(note_size * 0.8, note_size * 0.8),
@@ -212,6 +315,16 @@ impl SudokuApp {
                                     highlight_rect,
                                     2.0,
                                     Color32::from_rgb(255, 200, 200), // Light red
+                                );
+                            } else if highlight_about_to_be_removed {
+                                let highlight_rect = Rect::from_center_size(
+                                    note_pos,
+                                    Vec2::new(note_size * 0.8, note_size * 0.8),
+                                );
+                                painter.rect_filled(
+                                    highlight_rect,
+                                    2.0,
+                                    Color32::from_rgb(224, 168, 110), // Orange
                                 );
                             }
 
@@ -243,6 +356,18 @@ impl eframe::App for SudokuApp {
                         self.sudoku.from_string(&digits);
                         self.settings.sudoku_string = digits;
                         true
+                    } else if let Event::Copy = e {
+                        println!("Copying {} to clipboard", self.sudoku.serialized());
+                        // the next line freezes the app
+                        self.handle_clipboard_copy(&self.sudoku.serialized(), ctx);
+                        true
+                    } else if let Event::Key { key, pressed, .. } = e {
+                        if *key == egui::Key::ArrowRight && *pressed {
+                            self.proceed();
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         false
                     }
@@ -256,6 +381,7 @@ impl eframe::App for SudokuApp {
                     if ui.button("|<<").clicked() {
                         self.sudoku.restore();
                         self.state = State::CalculateNotes;
+                        self.strategy_result.clear();
                         ctx.request_repaint();
                     }
                     if ui.button("<").clicked() {
@@ -263,24 +389,7 @@ impl eframe::App for SudokuApp {
                         ctx.request_repaint();
                     }
                     if ui.button(">").clicked() {
-                        match self.state {
-                            State::CalculateNotes => {
-                                self.sudoku.calc_all_notes();
-                                self.state = State::TryingStrategy;
-                            }
-                            State::TryingStrategy => {
-                                self.strategy_result = self.sudoku.next_step();
-                                println!("{:?}", self.strategy_result);
-                                self.state = State::ApplyingStrategy;
-                            }
-                            State::ApplyingStrategy => {
-                                let resolution: Resolution =
-                                    self.sudoku.apply(&self.strategy_result);
-                                println!("{:?}", resolution);
-                                self.strategy_result.clear();
-                                self.state = State::TryingStrategy;
-                            }
-                        }
+                        self.proceed();
                         ctx.request_repaint();
                     }
                     if ui.button(">>|").clicked() {
@@ -288,10 +397,20 @@ impl eframe::App for SudokuApp {
                         self.sudoku.solve_by_backtracking();
                         ctx.request_repaint();
                     }
-
+                    if ui.button("Copy to clipboard").clicked() {
+                        self.handle_clipboard_copy(&self.sudoku.serialized(), ctx);
+                    }
                     // Status information display
                     let status_text = if self.strategy_result.strategy != Strategy::None {
-                        format!("Strategy: {}", self.strategy_result.strategy)
+                        if self.strategy_result.removals.unit.is_some() {
+                            format!(
+                                "Strategy: {} in {}",
+                                self.strategy_result.strategy,
+                                self.strategy_result.removals.unit.as_ref().unwrap()
+                            )
+                        } else {
+                            format!("Strategy: {}", self.strategy_result.strategy)
+                        }
                     } else if self.sudoku.is_solved() {
                         std::fmt::format(format_args!(
                             "Solved! Effort: {:.1}",
@@ -308,12 +427,13 @@ impl eframe::App for SudokuApp {
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
-        println!("Saving settings: {:?}", self.settings);
+        log::info!("Saving settings: {:?}", self.settings);
         eframe::set_value(storage, eframe::APP_KEY, &self.settings);
     }
 }
 
 impl SudokuApp {
+    #[cfg(not(target_arch = "wasm32"))]
     fn load(&mut self, storage: &dyn Storage) {
         self.sudoku.from_string(
             "008000063030000000000047120006000000001830400000901700000408031000500204200000000",
@@ -327,14 +447,42 @@ impl SudokuApp {
         }
         self.settings.sudoku_string = self.sudoku.serialized();
     }
-}
 
-impl Default for SudokuApp {
-    fn default() -> Self {
-        SudokuApp::new()
+    fn proceed(&mut self) {
+        match self.state {
+            State::CalculateNotes => {
+                self.sudoku.calc_all_notes();
+                self.state = State::TryingStrategy;
+            }
+            State::TryingStrategy => {
+                self.strategy_result = self.sudoku.next_step();
+                println!("{:?}", self.strategy_result);
+                self.state = State::ApplyingStrategy;
+            }
+            State::ApplyingStrategy => {
+                let resolution: Resolution = self.sudoku.apply(&self.strategy_result);
+                println!("{:?}", resolution);
+                self.strategy_result.clear();
+                self.state = State::TryingStrategy;
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn handle_clipboard_copy(&self, text: &str, _ctx: &egui::Context) {
+        if let Some(window) = web_sys::window() {
+            let _ = window.navigator().clipboard().write_text(text);
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn handle_clipboard_copy(&self, text: &str, ctx: &egui::Context) {
+        // Your current implementation
+        ctx.output_mut(|o| o.commands = vec![egui::OutputCommand::CopyText(text.to_string())]);
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions::default();
     eframe::run_native(
@@ -348,4 +496,32 @@ fn main() -> eframe::Result<()> {
             Ok(Box::new(app))
         }),
     )
+}
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::JsCast as _;
+    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
+    let web_options = eframe::WebOptions::default();
+    wasm_bindgen_futures::spawn_local(async {
+        let document = web_sys::window()
+            .expect("No window")
+            .document()
+            .expect("No document");
+
+        let canvas = document
+            .get_element_by_id("the_canvas_id")
+            .expect("Failed to find the_canvas_id")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("the_canvas_id was not a HtmlCanvasElement");
+
+        let _ = eframe::WebRunner::new()
+            .start(
+                canvas,
+                web_options,
+                Box::new(|cc| Ok(Box::new(SudokuApp::new(cc)))),
+            )
+            .await;
+
+    });
 }

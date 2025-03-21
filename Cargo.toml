@@ -1,5 +1,5 @@
 [package]
-name = "sudoku"
+name = "rate-my-sudoku"
 version = "0.1.0"
 edition = "2024"
 authors = ["Oliver Lau"]
@@ -10,9 +10,30 @@ keywords = ["sudoku", "puzzle", "game"]
 categories = ["games"]
 
 [dependencies]
-eframe = { version = "^0.31", features = ["persistence"] }
+eframe = { version = "^0.31", features = ["persistence", "glow", "default_fonts", "wayland"] }
 egui = { version = "^0.31", features = ["persistence"] }
 serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Window",
+    "Element",
+    "Location",
+    "Storage",
+    "Clipboard",
+    "ClipboardEvent",
+] }
+
+[profile.release]
+opt-level = 2 # fast and small wasm
+
+# Optimize all dependencies even in debug builds:
+[profile.dev.package."*"]
+opt-level = 2
 
 [[bin]]
 name = "sudokui"
