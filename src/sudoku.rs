@@ -1,7 +1,7 @@
+use log;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::LazyLock;
-use log;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Unit {
@@ -558,7 +558,9 @@ impl Sudoku {
                 }
                 log::debug!(
                     "Found obvious single {} at ({}, {})",
-                    self.board[row][col], row, col
+                    self.board[row][col],
+                    row,
+                    col
                 );
                 assert_eq!(self.board[row][col], EMPTY);
                 let &num = self.candidates[row][col].iter().next().unwrap();
@@ -730,7 +732,10 @@ impl Sudoku {
                 let start_row = 3 * (row / 3);
                 log::debug!(
                     "Found pointing pair {:?} in row {} at columns ({}, {})",
-                    num, row, col1, col2
+                    num,
+                    row,
+                    col1,
+                    col2
                 );
 
                 // Remove this candidate from other cells in the same box but different row
@@ -798,7 +803,10 @@ impl Sudoku {
                 let start_col = 3 * (col / 3);
                 log::debug!(
                     "Found pointing pair {:?} in column {} at rows ({}, {})",
-                    num, col, row1, row2
+                    num,
+                    col,
+                    row1,
+                    row2
                 );
                 // Remove this candidate from other cells in the same box but different column
                 for c in start_col..start_col + 3 {
@@ -1534,7 +1542,10 @@ impl Sudoku {
                     }
                     log::debug!(
                         "Found x-wing {:?} in rows {} and {} at columns {:?}",
-                        num, row1, row2, cols1
+                        num,
+                        row1,
+                        row2,
+                        cols1
                     );
                     result.candidates_affected.push(Candidate {
                         row: row1,
@@ -1614,7 +1625,10 @@ impl Sudoku {
                     }
                     log::debug!(
                         "Found X-Wing {:?} in columns {} and {} at rows {:?}",
-                        num, col1, col2, rows1
+                        num,
+                        col1,
+                        col2,
+                        rows1
                     );
                     result.candidates_affected.push(Candidate {
                         row: rows1[0],

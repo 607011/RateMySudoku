@@ -12,7 +12,6 @@ use egui::{Color32, Event, FontId, Pos2, Rect, Stroke, Vec2};
 #[cfg(not(target_arch = "wasm32"))]
 use egui::OutputCommand;
 
-#[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,7 +23,6 @@ enum State {
     ApplyingStrategy,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Serialize, Deserialize)]
 struct AppSettings {
     sudoku_string: String,
@@ -35,7 +33,6 @@ struct AppSettings {
 struct AppSettings {
     sudoku_string: String,
 }
-
 
 pub struct SudokuApp {
     settings: AppSettings,
@@ -55,7 +52,8 @@ impl Default for SudokuApp {
 impl Default for SudokuApp {
     fn default() -> Self {
         let mut sudoku = Sudoku::new();
-        let sudoku_string = "008000063030000000000047120006000000001830400000901700000408031000500204200000000";
+        let sudoku_string =
+            "008000063030000000000047120006000000001830400000901700000408031000500204200000000";
         sudoku.from_string(sudoku_string);
         Self {
             settings: AppSettings {
@@ -477,7 +475,6 @@ impl SudokuApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn handle_clipboard_copy(&self, text: &str, ctx: &egui::Context) {
-        // Your current implementation
         ctx.output_mut(|o| o.commands = vec![egui::OutputCommand::CopyText(text.to_string())]);
     }
 }
@@ -522,6 +519,5 @@ fn main() {
                 Box::new(|cc| Ok(Box::new(SudokuApp::new(cc)))),
             )
             .await;
-
     });
 }

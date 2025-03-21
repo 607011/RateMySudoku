@@ -10,11 +10,31 @@ fn main() {
         println!("Please provide a string of length 81");
         return;
     }
-    let mut s = sudoku::Sudoku::new();
-    s.from_string(&args[1]);
+    let mut s0 = sudoku::Sudoku::new();
+    s0.from_string(&args[1]);
     let start = std::time::Instant::now();
-    s.solve_puzzle();
+    s0.solve_puzzle();
     let duration = start.elapsed();
+    println!(
+        "Time to solve: {:.3} ms",
+        1e-3 * duration.as_micros() as f64
+    );
 
-    println!("Time to solve: {} µs", duration.as_micros());
+    let start = std::time::Instant::now();
+    let mut s1 = sudoku::Sudoku::new();
+    s1.from_string(&args[1]);
+    s1.solve_by_backtracking();
+    let duration = start.elapsed();
+    println!(
+        "For comparison: time to solve with backtracker: {:.3} ms",
+        1e-3 * duration.as_micros() as f64
+    );
+
+    if s0.serialized() != s1.serialized() {
+        println!("\nSOLUTIONS DIFFER\n");
+        println!("Human-like solver:");
+        s0.print();
+        println!("Backtracking solver:");
+        s1.print();
+    }
 }
