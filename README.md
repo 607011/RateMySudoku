@@ -18,6 +18,7 @@ The following strategies are currently implemented:
 | Obvious Single         |      5 |
 | Hidden Single          |     14 |
 | Pointing Pair          |     50 |
+| Claiming Pair          |     50 |
 | Obvious Pair           |     60 |
 | Hidden Pair            |     70 |
 | X-Wing                 |    140 |
