@@ -1,0 +1,51 @@
+name: Sudoku Rater CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - './**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - './**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./.
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          mathserver/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+    - name: Check with clippy
+      run: cargo clippy -- -D warnings
+
+    - name: Run tests
+      run: cargo test --all-features
+
+    - name: Build
+      run: cargo build --release
