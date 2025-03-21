@@ -35,7 +35,7 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          mathserver/target
+          target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Check formatting
