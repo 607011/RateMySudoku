@@ -88,7 +88,8 @@ impl SudokuApp {
         let thick_line_color = Color32::BLACK;
         let filled_cell_color = Color32::from_rgb(235, 235, 235);
         let text_color = Color32::BLACK;
-        let notes_color = Color32::from_rgb(100, 100, 100);
+        let notes_color = Color32::from_gray(100);
+        let shade_color = Color32::from_gray(170);
 
         // Define stroke widths
         let thin_stroke = Stroke::new(1.0, grid_color);
