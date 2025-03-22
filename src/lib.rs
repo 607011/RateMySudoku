@@ -844,61 +844,42 @@ impl Sudoku {
 
     fn find_pointing_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
-        for row in 0..9 {
-            for num in 1..=9 {
-                // Track cells with candidate `num` in this row
-                let mut cells_with_num = Vec::new();
-
-                for col in 0..9 {
-                    if !self.candidates[row][col].contains(&num) {
+        for box_row in (0..9).step_by(3) {
+            for box_col in (0..9).step_by(3) {
+                for num in 1..=9 {
+                    // Collect unique rows where candidate `num` appears in this box
+                    let rows_with_num: HashSet<usize> = (0..3)
+                        .flat_map(|i| (0..3).map(move |j| (box_row + i, box_col + j)))
+                        .filter(|&(row, col)| self.candidates[row][col].contains(&num))
+                        .map(|(row, _)| row)
+                        .collect();
+                    // `num` must appear exactly one row within the box
+                    if rows_with_num.len() != 1 {
                         continue;
                     }
-                    cells_with_num.push(col);
-                }
-
-                // Need exactly 2 cells with this candidate
-                if cells_with_num.len() != 2 {
-                    continue;
-                }
-
-                let col1 = cells_with_num[0];
-                let col2 = cells_with_num[1];
-
-                // They must be in the same box
-                if col1 / 3 != col2 / 3 {
-                    continue;
-                }
-
-                let box_row = row / 3;
-                let start_col = 3 * (col1 / 3);
-                for c in start_col..start_col + 3 {
-                    if c == col1 || c == col2 {
-                        continue; // Skip the columns that form the pointing pair
-                    }
-                    for r in (box_row * 3)..(box_row * 3 + 3) {
-                        if self.candidates[r][c].contains(&num) {
-                            result.candidates_about_to_be_removed.insert(Candidate {
-                                row: r,
-                                col: c,
-                                num,
-                            });
+                    let row = *rows_with_num.iter().next().unwrap();
+                    for col in 0..9 {
+                        if col < box_col || col >= box_col + 3 {
+                            if self.candidates[row][col].contains(&num) {
+                                result.candidates_about_to_be_removed.insert(Candidate {
+                                    row,
+                                    col,
+                                    num,
+                                });
+                            }
                         }
                     }
-                }
-                if result.will_remove_candidates() {
-                    result.unit = Some(Unit::Row);
-                    result.unit_index = Some(vec![row]);
-                    result.candidates_affected.push(Candidate {
-                        row,
-                        col: col1,
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row,
-                        col: col2,
-                        num,
-                    });
-                    return result;
+                    if result.will_remove_candidates() {
+                        // For each cell with the candidate in this box and row, add it to affected candidates
+                        for col in box_col..box_col + 3 {
+                            if self.candidates[row][col].contains(&num) {
+                                result.candidates_affected.push(Candidate { row, col, num });
+                            }
+                        }
+                        result.unit = Some(Unit::Row);
+                        result.unit_index = Some(vec![row]);
+                        return result;
+                    }
                 }
             }
         }
@@ -907,56 +888,42 @@ impl Sudoku {
 
     fn find_pointing_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
-        for col in 0..9 {
-            for num in 1..=9 {
-                // Find cells in this column that contain the number as a candidate
-                let mut cells_with_num = Vec::new();
-                for row in 0..9 {
-                    if !self.candidates[row][col].contains(&num) {
+        for box_row in (0..9).step_by(3) {
+            for box_col in (0..9).step_by(3) {
+                for num in 1..=9 {
+                    // Collect unique columns where candidate `num` appears in this box
+                    let cols_with_num: HashSet<usize> = (0..3)
+                        .flat_map(|i| (0..3).map(move |j| (box_row + j, box_col + i)))
+                        .filter(|&(row, col)| self.candidates[row][col].contains(&num))
+                        .map(|(_, col)| col)
+                        .collect();
+                    // `num` must appear exactly one column within the box
+                    if cols_with_num.len() != 1 {
                         continue;
                     }
-                    cells_with_num.push(row);
-                }
-                // Check if exactly two cells with this candidate are in the same box
-                if cells_with_num.len() != 2 {
-                    continue;
-                }
-                let row1 = cells_with_num[0];
-                let row2 = cells_with_num[1];
-                // Check if they're in the same box
-                if row1 / 3 != row2 / 3 {
-                    continue;
-                }
-                let box_col = col / 3;
-                let start_row = 3 * (row1 / 3);
-                for r in start_row..start_row + 3 {
-                    if r == row1 || r == row2 {
-                        continue; // Skip the original column
-                    }
-                    for c in (box_col * 3)..(box_col * 3 + 3) {
-                        if self.candidates[r][c].contains(&num) {
-                            result.candidates_about_to_be_removed.insert(Candidate {
-                                row: r,
-                                col: c,
-                                num,
-                            });
+                    let col = *cols_with_num.iter().next().unwrap();
+                    for row in 0..9 {
+                        if row < box_row || row >= box_row + 3 {
+                            if self.candidates[row][col].contains(&num) {
+                                result.candidates_about_to_be_removed.insert(Candidate {
+                                    row,
+                                    col,
+                                    num,
+                                });
+                            }
                         }
                     }
-                }
-                if result.will_remove_candidates() {
-                    result.unit = Some(Unit::Column);
-                    result.unit_index = Some(vec![col]);
-                    result.candidates_affected.push(Candidate {
-                        row: row1,
-                        col,
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: row2,
-                        col,
-                        num,
-                    });
-                    return result;
+                    if result.will_remove_candidates() {
+                        // For each cell with the candidate in this box and column, add it to affected candidates
+                        for row in box_row..box_row + 3 {
+                            if self.candidates[row][col].contains(&num) {
+                                result.candidates_affected.push(Candidate { row, col, num });
+                            }
+                        }
+                        result.unit = Some(Unit::Column);
+                        result.unit_index = Some(vec![col]);
+                        return result;
+                    }
                 }
             }
         }
