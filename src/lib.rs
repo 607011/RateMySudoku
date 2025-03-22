@@ -199,6 +199,13 @@ impl Sudoku {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn from_string(s: &str) -> Sudoku {
+        let mut sudoku = Sudoku::new();
+        sudoku.set_board_string(s);
+        sudoku
+    }
+
     pub fn clear(&mut self) {
         self.candidates = std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new()));
         self.board = [[EMPTY; 9]; 9];
