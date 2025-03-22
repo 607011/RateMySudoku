@@ -476,6 +476,10 @@ impl SudokuApp {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp(None)
+        .format_target(false)
+        .init();
     let options = eframe::NativeOptions::default();
     eframe::run_native(
         APP_NAME,
