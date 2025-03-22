@@ -314,7 +314,7 @@ impl SudokuApp {
                                 painter.rect_filled(
                                     highlight_rect,
                                     2.0,
-                                    Color32::from_rgb(224, 168, 110), // Orange
+                                    Color32::from_rgb(199, 240, 70), // Yellow green
                                 );
                             }
 
