@@ -551,7 +551,7 @@ impl Sudoku {
         RemovalResult::empty()
     }
 
-    fn find_last_digit(&self) -> StrategyResult {
+    pub fn find_last_digit(&self) -> StrategyResult {
         let mut result = StrategyResult::new(Strategy::LastDigit);
         log::info!("Finding last digits in rows");
         let removal_result = self.find_last_digit_in_rows();
@@ -571,7 +571,7 @@ impl Sudoku {
         result
     }
 
-    fn find_obvious_single(&self) -> StrategyResult {
+    pub fn find_obvious_single(&self) -> StrategyResult {
         for row in 0..9 {
             for col in 0..9 {
                 if self.candidates[row][col].len() != 1 {
@@ -722,43 +722,29 @@ impl Sudoku {
         RemovalResult::empty()
     }
 
-    fn find_pointing_pair_in_rows(&self) -> RemovalResult {
+    fn is_claiming_pair(cells_with_num: &[usize]) -> bool {
+        cells_with_num.len() == 2 && (cells_with_num[0] / 3 == cells_with_num[1] / 3)
+    }
+
+    fn find_claiming_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for row in 0..9 {
             for num in 1..=9 {
                 // Track cells with candidate `num` in this row
                 let mut cells_with_num = Vec::new();
-
                 for col in 0..9 {
                     if !self.candidates[row][col].contains(&num) {
                         continue;
                     }
                     cells_with_num.push(col);
                 }
-
-                // Need exactly 2 cells with this candidate
-                if cells_with_num.len() != 2 {
+                if !Self::is_claiming_pair(&cells_with_num) {
                     continue;
                 }
-
                 let col1 = cells_with_num[0];
                 let col2 = cells_with_num[1];
-
-                // They must be in the same box
-                if col1 / 3 != col2 / 3 {
-                    continue;
-                }
-
                 let box_col = col1 / 3;
                 let start_row = 3 * (row / 3);
-                log::info!(
-                    "Found pointing pair {:?} in row {} at columns ({}, {})",
-                    num,
-                    row,
-                    col1,
-                    col2
-                );
-
                 // Remove this candidate from other cells in the same box but different row
                 for r in start_row..start_row + 3 {
                     if r == row {
@@ -773,28 +759,28 @@ impl Sudoku {
                             });
                         }
                     }
-                    if result.will_remove_candidates() {
-                        result.candidates_affected.push(Candidate {
-                            row,
-                            col: col1,
-                            num,
-                        });
-                        result.candidates_affected.push(Candidate {
-                            row,
-                            col: col2,
-                            num,
-                        });
-                        result.unit = Some(Unit::Row);
-                        result.unit_index = Some(vec![row]);
-                        return result;
-                    }
+                }
+                if result.will_remove_candidates() {
+                    result.candidates_affected.push(Candidate {
+                        row,
+                        col: col1,
+                        num,
+                    });
+                    result.candidates_affected.push(Candidate {
+                        row,
+                        col: col2,
+                        num,
+                    });
+                    result.unit = Some(Unit::Row);
+                    result.unit_index = Some(vec![row]);
+                    return result;
                 }
             }
         }
         result
     }
 
-    fn find_pointing_pair_in_cols(&self) -> RemovalResult {
+    fn find_claiming_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for col in 0..9 {
             for num in 1..=9 {
@@ -806,29 +792,13 @@ impl Sudoku {
                     }
                     cells_with_num.push(row);
                 }
-
-                // Check if exactly two cells with this candidate are in the same box
-                if cells_with_num.len() != 2 {
+                if !Self::is_claiming_pair(&cells_with_num) {
                     continue;
                 }
-
                 let row1 = cells_with_num[0];
                 let row2 = cells_with_num[1];
-
-                // Check if they're in the same box
-                if row1 / 3 != row2 / 3 {
-                    continue;
-                }
-
                 let box_idx = row1 / 3;
                 let start_col = 3 * (col / 3);
-                log::info!(
-                    "Found pointing pair {:?} in column {} at rows ({}, {})",
-                    num,
-                    col,
-                    row1,
-                    row2
-                );
                 // Remove this candidate from other cells in the same box but different column
                 for c in start_col..start_col + 3 {
                     if c == col {
@@ -843,45 +813,45 @@ impl Sudoku {
                             });
                         }
                     }
-                    if result.will_remove_candidates() {
-                        result.candidates_affected.push(Candidate {
-                            row: row1,
-                            col,
-                            num,
-                        });
-                        result.candidates_affected.push(Candidate {
-                            row: row2,
-                            col,
-                            num,
-                        });
-                        result.unit = Some(Unit::Column);
-                        result.unit_index = Some(vec![col]);
-                        return result;
-                    }
+                }
+                if result.will_remove_candidates() {
+                    result.candidates_affected.push(Candidate {
+                        row: row1,
+                        col,
+                        num,
+                    });
+                    result.candidates_affected.push(Candidate {
+                        row: row2,
+                        col,
+                        num,
+                    });
+                    result.unit = Some(Unit::Column);
+                    result.unit_index = Some(vec![col]);
+                    return result;
                 }
             }
         }
         result
     }
 
-    fn find_pointing_pair(&self) -> StrategyResult {
-        log::info!("Finding pointing pairs in rows");
-        let result = self.find_pointing_pair_in_rows();
+    pub fn find_claiming_pair(&self) -> StrategyResult {
+        log::info!("Finding claiming pairs in rows");
+        let result = self.find_claiming_pair_in_rows();
         if result.will_remove_candidates() {
             return StrategyResult {
-                strategy: Strategy::PointingPair,
+                strategy: Strategy::ClaimingPair,
                 removals: result,
             };
         }
-        log::info!("Finding pointing pairs in columns");
-        let result = self.find_pointing_pair_in_cols();
+        log::info!("Finding claiming pairs in columns");
+        let result = self.find_claiming_pair_in_cols();
         StrategyResult {
-            strategy: Strategy::PointingPair,
+            strategy: Strategy::ClaimingPair,
             removals: result,
         }
     }
 
-    fn find_claiming_pair_in_rows(&self) -> RemovalResult {
+    fn find_pointing_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for row in 0..9 {
             for num in 1..=9 {
@@ -910,13 +880,10 @@ impl Sudoku {
 
                 let box_row = row / 3;
                 let start_col = 3 * (col1 / 3);
-
-                // Remove this candidate from other cells in the same box but different column
                 for c in start_col..start_col + 3 {
-                    if c == col1 {
-                        continue; // Skip the original column
+                    if c == col1 || c == col2 {
+                        continue; // Skip the columns that form the pointing pair
                     }
-
                     for r in (box_row * 3)..(box_row * 3 + 3) {
                         if self.candidates[r][c].contains(&num) {
                             result.candidates_about_to_be_removed.insert(Candidate {
@@ -926,28 +893,28 @@ impl Sudoku {
                             });
                         }
                     }
-                    if result.will_remove_candidates() {
-                        result.candidates_affected.push(Candidate {
-                            row,
-                            col: col1,
-                            num,
-                        });
-                        result.candidates_affected.push(Candidate {
-                            row,
-                            col: col2,
-                            num,
-                        });
-                        result.unit = Some(Unit::Row);
-                        result.unit_index = Some(vec![row]);
-                        return result;
-                    }
+                }
+                if result.will_remove_candidates() {
+                    result.unit = Some(Unit::Row);
+                    result.unit_index = Some(vec![row]);
+                    result.candidates_affected.push(Candidate {
+                        row,
+                        col: col1,
+                        num,
+                    });
+                    result.candidates_affected.push(Candidate {
+                        row,
+                        col: col2,
+                        num,
+                    });
+                    return result;
                 }
             }
         }
         result
     }
 
-    fn find_claiming_pair_in_cols(&self) -> RemovalResult {
+    fn find_pointing_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for col in 0..9 {
             for num in 1..=9 {
@@ -959,75 +926,65 @@ impl Sudoku {
                     }
                     cells_with_num.push(row);
                 }
-
                 // Check if exactly two cells with this candidate are in the same box
                 if cells_with_num.len() != 2 {
                     continue;
                 }
-
                 let row1 = cells_with_num[0];
                 let row2 = cells_with_num[1];
-
                 // Check if they're in the same box
                 if row1 / 3 != row2 / 3 {
                     continue;
                 }
-
-                let box_idx = row1 / 3;
-                let start_col = 3 * (col / 3);
-                result.cells_affected.push(Cell {
-                    row: row1,
-                    col,
-                    num,
-                });
-                result.cells_affected.push(Cell {
-                    row: row2,
-                    col,
-                    num,
-                });
-                // Remove this candidate from other cells in the same box but different column
-                for c in start_col..start_col + 3 {
-                    if c == col {
+                let box_col = col / 3;
+                let start_row = 3 * (row1 / 3);
+                for r in start_row..start_row + 3 {
+                    if r == row1 || r == row2 {
                         continue; // Skip the original column
                     }
-                    for r in (box_idx * 3)..(box_idx * 3 + 3) {
+                    for c in (box_col * 3)..(box_col * 3 + 3) {
                         if self.candidates[r][c].contains(&num) {
-                            result.candidates_affected.push(Candidate {
-                                row: r,
-                                col: c,
-                                num,
-                            });
-                            result.candidates_affected.push(Candidate {
+                            result.candidates_about_to_be_removed.insert(Candidate {
                                 row: r,
                                 col: c,
                                 num,
                             });
                         }
                     }
-                    if result.will_remove_candidates() {
-                        result.unit = Some(Unit::Column);
-                        result.unit_index = Some(vec![col]);
-                        return result;
-                    }
+                }
+                if result.will_remove_candidates() {
+                    result.unit = Some(Unit::Column);
+                    result.unit_index = Some(vec![col]);
+                    result.candidates_affected.push(Candidate {
+                        row: row1,
+                        col,
+                        num,
+                    });
+                    result.candidates_affected.push(Candidate {
+                        row: row2,
+                        col,
+                        num,
+                    });
+                    return result;
                 }
             }
         }
         result
     }
 
-    fn find_claiming_pair(&self) -> StrategyResult {
-        log::info!("Finding claiming pairs in rows");
-        let result = self.find_claiming_pair_in_rows();
+    pub fn find_pointing_pair(&self) -> StrategyResult {
+        log::info!("Finding pointing pair in rows");
+        let result = self.find_pointing_pair_in_rows();
         if result.will_remove_candidates() {
             return StrategyResult {
-                strategy: Strategy::ClaimingPair,
+                strategy: Strategy::PointingPair,
                 removals: result,
             };
         }
-        log::info!("Finding claiming pairs in columns");
-        let result = self.find_claiming_pair_in_cols();
+        log::info!("Finding pointing pair in columns");
+        let result = self.find_pointing_pair_in_cols();
         StrategyResult {
-            strategy: Strategy::ClaimingPair,
+            strategy: Strategy::PointingPair,
             removals: result,
         }
     }
@@ -1211,7 +1168,7 @@ impl Sudoku {
         result
     }
 
-    fn find_obvious_pair(&self) -> StrategyResult {
+    pub fn find_obvious_pair(&self) -> StrategyResult {
         log::info!("Finding obvious pairs in rows");
         let removal_result = self.find_obvious_pair_in_rows();
         if removal_result.will_remove_candidates() {
@@ -1507,7 +1464,7 @@ impl Sudoku {
         result
     }
 
-    fn find_hidden_pair(&self) -> StrategyResult {
+    pub fn find_hidden_pair(&self) -> StrategyResult {
         log::info!("Finding hidden pairs in rows");
         let removal_result = self.find_hidden_pair_in_rows();
         if removal_result.will_remove_candidates() {
@@ -1700,7 +1657,7 @@ impl Sudoku {
     /// Find and resolve X-Wing candidates.
     /// An X-Wing occurs when a digit can only go in two rows and two columns, forming a rectangle.
     /// In this case, the digit can be removed from all other cells in the same rows and columns.
-    fn find_xwing(&self) -> StrategyResult {
+    pub fn find_xwing(&self) -> StrategyResult {
         log::info!("Finding X-Wings in rows");
         let result = self.find_xwing_in_rows();
         if result.will_remove_candidates() {
