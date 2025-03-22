@@ -187,15 +187,6 @@ impl Default for Sudoku {
     }
 }
 
-/// Represents a Sudoku puzzle and provides methods for solving and manipulating it.
-///
-/// The `Sudoku` struct contains the following fields:
-/// - `board`: A 2D array representing the Sudoku board, where each element is a u8 representing the number in that cell (0 for empty).
-/// - `notes`: A 2D array of HashSets, where each HashSet contains the possible numbers (notes) for that cell.
-/// - `nums_in_row`: An array of HashSets, where each HashSet contains the numbers already present in that row.
-/// - `nums_in_col`: An array of HashSets, where each HashSet contains the numbers already present in that column.
-/// - `nums_in_box`: An array of HashSets, where each HashSet contains the numbers already present in that 3x3 box.
-/// - `rating`: A HashMap to store the rating of the Sudoku puzzle (not currently used).
 impl Sudoku {
     pub fn new() -> Sudoku {
         Sudoku {
