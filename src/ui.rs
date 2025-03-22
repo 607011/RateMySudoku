@@ -337,30 +337,39 @@ impl eframe::App for SudokuApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             if ctx.input(|i| {
-                i.events.iter().any(|e| {
-                    if let Event::Paste(text) = e {
+                i.events.iter().any(|e| match e {
+                    Event::Paste(text) => {
                         let digits: String = text.chars().filter(|c| c.is_ascii_digit()).collect();
                         if digits.len() != 81 {
                             return false;
                         }
+                        log::info!("Pasted sudoku: {}", &digits);
                         self.sudoku.set_board_string(&digits);
                         self.settings.sudoku_string = digits;
+                        self.state = State::CalculateNotes;
+                        self.strategy_result.clear();
                         true
-                    } else if let Event::Copy = e {
-                        log::info!("Copying {} to clipboard", self.sudoku.serialized());
-                        // the next line freezes the app
-                        self.handle_clipboard_copy(&self.sudoku.serialized(), ctx);
-                        true
-                    } else if let Event::Key { key, pressed, .. } = e {
-                        if *key == egui::Key::ArrowRight && *pressed {
-                            self.proceed();
-                            true
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
                     }
+                    Event::Copy => {
+                        log::info!("Use the 'Copy to clipboard' button");
+                        true
+                    }
+                    Event::Key { key, pressed, .. } if *pressed => {
+                        match *key {
+                            egui::Key::ArrowRight if self.sudoku.unsolved() => {
+                                self.proceed();
+                            }
+                            egui::Key::ArrowLeft => {
+                                self.sudoku.prev_step();
+                                self.state = State::CalculateNotes;
+                                self.strategy_result.clear();
+                                self.proceed();
+                            }
+                            _ => {}
+                        }
+                        true
+                    }
+                    _ => false,
                 })
             }) {
                 ctx.request_repaint();
@@ -397,9 +406,10 @@ impl eframe::App for SudokuApp {
                     let status_text = if self.strategy_result.strategy != Strategy::None {
                         if self.strategy_result.removals.unit.is_some() {
                             format!(
-                                "Strategy: {} in {}",
+                                "Strategy: {} in {} {:?}",
                                 self.strategy_result.strategy,
-                                self.strategy_result.removals.unit.as_ref().unwrap()
+                                self.strategy_result.removals.unit.as_ref().unwrap(),
+                                self.strategy_result.removals.unit_index.as_ref().unwrap()
                             )
                         } else {
                             format!("Strategy: {}", self.strategy_result.strategy)
