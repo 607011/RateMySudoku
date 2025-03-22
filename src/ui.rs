@@ -376,6 +376,9 @@ impl eframe::App for SudokuApp {
                     }
                     if ui.button("<").clicked() {
                         self.sudoku.prev_step();
+                        self.state = State::CalculateNotes;
+                        self.strategy_result.clear();
+                        self.proceed();
                         ctx.request_repaint();
                     }
                     if ui.button(">").clicked() {

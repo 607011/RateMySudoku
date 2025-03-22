@@ -167,6 +167,7 @@ pub struct Sudoku {
     pub original_board: [[u8; 9]; 9],
     pub candidates: [[HashSet<u8>; 9]; 9],
     pub rating: HashMap<Strategy, usize>,
+    pub undo_stack: Vec<Sudoku>,
 }
 
 impl fmt::Display for Sudoku {
@@ -194,6 +195,7 @@ impl Sudoku {
             original_board: [[EMPTY; 9]; 9],
             candidates: std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new())),
             rating: HashMap::new(),
+            undo_stack: Vec::new(),
         }
     }
 
@@ -201,6 +203,14 @@ impl Sudoku {
         self.candidates = std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new()));
         self.board = [[EMPTY; 9]; 9];
         self.rating.clear();
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(state) = self.undo_stack.pop() {
+            self.board = state.board;
+            self.candidates = state.candidates;
+            self.rating = state.rating;
+        }
     }
 
     pub fn original_board(&self) -> String {
@@ -1816,6 +1826,12 @@ impl Sudoku {
     /// Apply the strategy result to the Sudoku board.
     pub fn apply(&mut self, strategy_result: &StrategyResult) -> Resolution {
         log::info!("Applying strategy: {:?}", strategy_result.strategy);
+        let start = std::time::Instant::now();
+        let mut clone = self.clone();
+        clone.undo_stack = Vec::new(); // Don't clone the undo stack
+        self.undo_stack.push(clone);
+        let elapsed = start.elapsed().as_millis();
+        log::info!("Cloning and pushing to undo stack took {} ms", elapsed);
         let result = Resolution {
             nums_removed: strategy_result
                 .removals
@@ -1840,9 +1856,8 @@ impl Sudoku {
     }
 
     /// Undo the last step.
-    /// XXX: This is not implemented yet.
     pub fn prev_step(&mut self) -> Resolution {
-        log::warn!("Undo last step not implemented yet");
+        self.undo();
         Resolution {
             nums_removed: 0,
             strategy: Strategy::None,
