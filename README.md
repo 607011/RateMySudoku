@@ -4,6 +4,10 @@
 
 ![Build Status](https://github.com/607011/sudoku-rater/actions/workflows/main.yml/badge.svg)
 
+## GUI written with egui/eframe
+
+<img width="791" alt="Sudukui" src="https://github.com/user-attachments/assets/b32a10c4-d053-4900-babb-f93a4891a828" />
+
 ## Strategies
 
 The solver attempts to solve a given Sudoku iteratively, applying strategies from easiest to most difficult.
