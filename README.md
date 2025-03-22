@@ -1,4 +1,4 @@
-# Sudoku Rater
+# Rate My Sudoku
 
 **Rate difficulty of Sudoku by applying strategies as a human would in order to solve it**
 
