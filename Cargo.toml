@@ -14,6 +14,7 @@ eframe = { version = "^0.31", features = ["persistence", "glow", "default_fonts"
 egui = { version = "^0.31", features = ["persistence"] }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
+env_logger = "^0.11"
 
 [features]
 default = ["dump"]

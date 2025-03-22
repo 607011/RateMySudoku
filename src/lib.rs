@@ -536,19 +536,19 @@ impl Sudoku {
 
     fn find_last_digit(&self) -> StrategyResult {
         let mut result = StrategyResult::new(Strategy::LastDigit);
-        log::debug!("Finding last digits in rows");
+        log::info!("Finding last digits in rows");
         let removal_result = self.find_last_digit_in_rows();
         if removal_result.will_remove_candidates() {
             result.removals = removal_result;
             return result;
         }
-        log::debug!("Finding last digits in columns");
+        log::info!("Finding last digits in columns");
         let removal_result = self.find_last_digit_in_cols();
         if removal_result.will_remove_candidates() {
             result.removals = removal_result;
             return result;
         }
-        log::debug!("Finding last digits in boxes");
+        log::info!("Finding last digits in boxes");
         let removal_result = self.find_last_digit_in_boxes();
         result.removals = removal_result;
         result
@@ -560,7 +560,7 @@ impl Sudoku {
                 if self.candidates[row][col].len() != 1 {
                     continue;
                 }
-                log::debug!(
+                log::info!(
                     "Found obvious single {} at ({}, {})",
                     self.board[row][col],
                     row,
@@ -585,23 +585,23 @@ impl Sudoku {
     /// Returns the number of notes removed as a result of placing new digits.
     fn find_hidden_single(&self) -> StrategyResult {
         let mut result = StrategyResult::new(Strategy::HiddenSingle);
-        log::debug!("Finding hidden singles in boxes");
+        log::info!("Finding hidden singles in boxes");
         let box_result = self.find_hidden_single_box();
-        log::debug!("{:?}", box_result);
+        log::info!("{:?}", box_result);
         if box_result.will_remove_candidates() {
             result.removals = box_result;
             return result;
         }
-        log::debug!("Finding hidden singles in rows");
+        log::info!("Finding hidden singles in rows");
         let row_result = self.find_hidden_single_row();
-        log::debug!("{:?}", row_result);
+        log::info!("{:?}", row_result);
         if row_result.will_remove_candidates() {
             result.removals = row_result;
             return result;
         }
-        log::debug!("Finding hidden singles in columns");
+        log::info!("Finding hidden singles in columns");
         let col_result = self.find_hidden_single_col();
-        log::debug!("{:?}", col_result);
+        log::info!("{:?}", col_result);
         if col_result.will_remove_candidates() {
             result.removals = col_result;
             return result;
@@ -734,7 +734,7 @@ impl Sudoku {
 
                 let box_col = col1 / 3;
                 let start_row = 3 * (row / 3);
-                log::debug!(
+                log::info!(
                     "Found pointing pair {:?} in row {} at columns ({}, {})",
                     num,
                     row,
@@ -805,7 +805,7 @@ impl Sudoku {
 
                 let box_idx = row1 / 3;
                 let start_col = 3 * (col / 3);
-                log::debug!(
+                log::info!(
                     "Found pointing pair {:?} in column {} at rows ({}, {})",
                     num,
                     col,
@@ -848,7 +848,7 @@ impl Sudoku {
     }
 
     fn find_pointing_pair(&self) -> StrategyResult {
-        log::debug!("Finding pointing pairs in rows");
+        log::info!("Finding pointing pairs in rows");
         let result = self.find_pointing_pair_in_rows();
         if result.will_remove_candidates() {
             return StrategyResult {
@@ -856,7 +856,7 @@ impl Sudoku {
                 removals: result,
             };
         }
-        log::debug!("Finding pointing pairs in columns");
+        log::info!("Finding pointing pairs in columns");
         let result = self.find_pointing_pair_in_cols();
         StrategyResult {
             strategy: Strategy::PointingPair,
@@ -999,7 +999,7 @@ impl Sudoku {
     }
 
     fn find_claiming_pair(&self) -> StrategyResult {
-        log::debug!("Finding claiming pairs in rows");
+        log::info!("Finding claiming pairs in rows");
         let result = self.find_claiming_pair_in_rows();
         if result.will_remove_candidates() {
             return StrategyResult {
@@ -1007,7 +1007,7 @@ impl Sudoku {
                 removals: result,
             };
         }
-        log::debug!("Finding claiming pairs in columns");
+        log::info!("Finding claiming pairs in columns");
         let result = self.find_claiming_pair_in_cols();
         StrategyResult {
             strategy: Strategy::ClaimingPair,
@@ -1074,7 +1074,7 @@ impl Sudoku {
                 }
 
                 let pair = self.candidates[row][col].clone();
-                log::debug!("Found pair {:?} at ({}, {})", pair, row, col);
+                log::info!("Found pair {:?} at ({}, {})", pair, row, col);
 
                 // Find pair in same column
                 for i in (row + 1)..9 {
@@ -1195,7 +1195,7 @@ impl Sudoku {
     }
 
     fn find_obvious_pair(&self) -> StrategyResult {
-        log::debug!("Finding obvious pairs in rows");
+        log::info!("Finding obvious pairs in rows");
         let removal_result = self.find_obvious_pair_in_rows();
         if removal_result.will_remove_candidates() {
             return StrategyResult {
@@ -1203,7 +1203,7 @@ impl Sudoku {
                 removals: removal_result,
             };
         }
-        log::debug!("Finding obvious pairs in columns");
+        log::info!("Finding obvious pairs in columns");
         let removal_result = self.find_obvious_pair_in_cols();
         if removal_result.will_remove_candidates() {
             return StrategyResult {
@@ -1211,7 +1211,7 @@ impl Sudoku {
                 removals: removal_result,
             };
         }
-        log::debug!("Finding obvious pairs in boxes");
+        log::info!("Finding obvious pairs in boxes");
         let removal_result = self.find_obvious_pair_in_boxes();
         StrategyResult {
             strategy: Strategy::ObviousPair,
@@ -1258,7 +1258,7 @@ impl Sudoku {
                         }
                     }
                 }
-                log::debug!("Hidden pairs in {:?} / {:?}", digit_locations, digit_pairs);
+                log::info!("Hidden pair in {:?} / {:?}", digit_locations, digit_pairs);
                 result.unit = Some(Unit::Row);
                 result.unit_index = Some(vec![]);
 
@@ -1491,7 +1491,7 @@ impl Sudoku {
     }
 
     fn find_hidden_pair(&self) -> StrategyResult {
-        log::debug!("Finding hidden pairs in rows");
+        log::info!("Finding hidden pairs in rows");
         let removal_result = self.find_hidden_pair_in_rows();
         if removal_result.will_remove_candidates() {
             return StrategyResult {
@@ -1499,7 +1499,7 @@ impl Sudoku {
                 removals: removal_result,
             };
         }
-        log::debug!("Finding hidden pairs in columns");
+        log::info!("Finding hidden pairs in columns");
         let removal_result = self.find_hidden_pair_in_cols();
         if removal_result.will_remove_candidates() {
             return StrategyResult {
@@ -1507,7 +1507,7 @@ impl Sudoku {
                 removals: removal_result,
             };
         }
-        log::debug!("Finding hidden pairs in boxes");
+        log::info!("Finding hidden pairs in boxes");
         let removal_result = self.find_hidden_pair_in_boxes();
         StrategyResult {
             strategy: Strategy::HiddenPair,
@@ -1544,7 +1544,7 @@ impl Sudoku {
                     if cols2.len() != 2 || cols1 != cols2 {
                         continue;
                     }
-                    log::debug!(
+                    log::info!(
                         "Found x-wing {:?} in rows {} and {} at columns {:?}",
                         num,
                         row1,
@@ -1627,7 +1627,7 @@ impl Sudoku {
                     if rows2.len() != 2 || rows1 != rows2 {
                         continue;
                     }
-                    log::debug!(
+                    log::info!(
                         "Found X-Wing {:?} in columns {} and {} at rows {:?}",
                         num,
                         col1,
@@ -1684,7 +1684,7 @@ impl Sudoku {
     /// An X-Wing occurs when a digit can only go in two rows and two columns, forming a rectangle.
     /// In this case, the digit can be removed from all other cells in the same rows and columns.
     fn find_xwing(&self) -> StrategyResult {
-        log::debug!("Finding X-Wings in rows");
+        log::info!("Finding X-Wings in rows");
         let result = self.find_xwing_in_rows();
         if result.will_remove_candidates() {
             return StrategyResult {
@@ -1692,7 +1692,7 @@ impl Sudoku {
                 removals: result,
             };
         }
-        log::debug!("Finding X-Wings in columns");
+        log::info!("Finding X-Wings in columns");
         let result = self.find_xwing_in_cols();
         if result.will_remove_candidates() {
             return StrategyResult {
@@ -1815,6 +1815,7 @@ impl Sudoku {
 
     /// Apply the strategy result to the Sudoku board.
     pub fn apply(&mut self, strategy_result: &StrategyResult) -> Resolution {
+        log::info!("Applying strategy: {:?}", strategy_result.strategy);
         let result = Resolution {
             nums_removed: strategy_result
                 .removals
