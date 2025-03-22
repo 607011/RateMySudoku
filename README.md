@@ -14,7 +14,7 @@ The solver attempts to solve a given Sudoku iteratively, applying strategies fro
 
 If a strategy is successful, the affected candidates are removed or the cells are filled with the resulting digits. The number of affected candidates/cells is added to a running total, as is the difficulty level of the respective strategy.
 
-After solving the Sudoku, the total difficulty is divided by the sum of the affected candidates and cells, which provides a good estimate of the perceived difficulty (effort). The higher the value, the more difficult the Sudoku typically is for a human.
+After solving the Sudoku, the total difficulty is divided by the sum of the affected candidates and cells, which provides a good estimate of the perceived difficulty (effort). The higher the value, the more difficult the Sudoku typically is for a human. This software uses the same effort values as [HoDoKu](https://hodoku.sourceforge.net/).
 
 The following strategies are currently implemented:
 
@@ -27,6 +27,7 @@ The following strategies are currently implemented:
 | Claiming Pair          |     50 |
 | Obvious Pair           |     60 |
 | Hidden Pair            |     70 |
+| Naked Triplet          |     80 |
 | X-Wing                 |    140 |
 
 More to come …
