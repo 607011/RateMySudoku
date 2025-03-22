@@ -22,12 +22,6 @@ struct AppSettings {
     sudoku_string: String,
 }
 
-#[cfg(target_arch = "wasm32")]
-#[derive(Debug, Serialize, Deserialize)]
-struct AppSettings {
-    sudoku_string: String,
-}
-
 pub struct SudokuApp {
     settings: AppSettings,
     sudoku: Sudoku,
