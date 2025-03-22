@@ -859,14 +859,14 @@ impl Sudoku {
                     }
                     let row = *rows_with_num.iter().next().unwrap();
                     for col in 0..9 {
-                        if col < box_col || col >= box_col + 3 {
-                            if self.candidates[row][col].contains(&num) {
-                                result.candidates_about_to_be_removed.insert(Candidate {
-                                    row,
-                                    col,
-                                    num,
-                                });
-                            }
+                        if (col < box_col || col >= box_col + 3)
+                            && self.candidates[row][col].contains(&num)
+                        {
+                            result.candidates_about_to_be_removed.insert(Candidate {
+                                row,
+                                col,
+                                num,
+                            });
                         }
                     }
                     if result.will_remove_candidates() {
@@ -903,14 +903,14 @@ impl Sudoku {
                     }
                     let col = *cols_with_num.iter().next().unwrap();
                     for row in 0..9 {
-                        if row < box_row || row >= box_row + 3 {
-                            if self.candidates[row][col].contains(&num) {
-                                result.candidates_about_to_be_removed.insert(Candidate {
-                                    row,
-                                    col,
-                                    num,
-                                });
-                            }
+                        if (row < box_row || row >= box_row + 3)
+                            && self.candidates[row][col].contains(&num)
+                        {
+                            result.candidates_about_to_be_removed.insert(Candidate {
+                                row,
+                                col,
+                                num,
+                            });
                         }
                     }
                     if result.will_remove_candidates() {
