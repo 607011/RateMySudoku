@@ -126,75 +126,73 @@ impl SudokuApp {
         // Draw filled cells for digits
         for row in 0..9 {
             for col in 0..9 {
-                if sudoku.get_num(row, col) != EMPTY {
-                    // Draw filled background for cells with values
-                    painter.rect_filled(
-                        Rect::from_min_size(
-                            Pos2::new(
-                                response.rect.min.x + col as f32 * cell_size,
-                                response.rect.min.y + row as f32 * cell_size,
-                            ),
-                            Vec2::new(cell_size, cell_size),
-                        ),
-                        0.0,
-                        filled_cell_color,
-                    );
-                    match &self.strategy_result.removals.unit_index {
-                        None => {}
-                        Some(unit_index) => match self.strategy_result.removals.unit {
-                            None => {}
-                            Some(Unit::Row) => {
-                                if !unit_index.contains(&row) {
-                                    painter.rect_filled(
-                                        Rect::from_min_size(
-                                            Pos2::new(
-                                                response.rect.min.x,
-                                                response.rect.min.y + row as f32 * cell_size,
-                                            ),
-                                            Vec2::new(board_size, cell_size),
-                                        ),
-                                        0.0,
-                                        Color32::from_gray(200),
-                                    );
-                                }
-                            }
-                            Some(Unit::Column) => {
-                                if !unit_index.contains(&col) {
-                                    painter.rect_filled(
-                                        Rect::from_min_size(
-                                            Pos2::new(
-                                                response.rect.min.x + col as f32 * cell_size,
-                                                response.rect.min.y,
-                                            ),
-                                            Vec2::new(cell_size, board_size),
-                                        ),
-                                        0.0,
-                                        Color32::from_gray(200),
-                                    );
-                                }
-                            }
-                            Some(Unit::Box) => {
-                                let box_row = row / 3;
-                                let box_col = col / 3;
-                                let box_index = box_row * 3 + box_col;
-                                if !unit_index.contains(&box_index) {
-                                    painter.rect_filled(
-                                        Rect::from_min_size(
-                                            Pos2::new(
-                                                response.rect.min.x
-                                                    + box_col as f32 * 3.0 * cell_size,
-                                                response.rect.min.y
-                                                    + box_row as f32 * 3.0 * cell_size,
-                                            ),
-                                            Vec2::new(3.0 * cell_size, 3.0 * cell_size),
-                                        ),
-                                        0.0,
-                                        Color32::from_gray(200),
-                                    );
-                                }
-                            }
-                        },
+                match &self.strategy_result.removals.unit_index {
+                    None => {
+                        if sudoku.get_num(row, col) != EMPTY {
+                            painter.rect_filled(
+                                Rect::from_min_size(
+                                    Pos2::new(
+                                        response.rect.min.x + col as f32 * cell_size,
+                                        response.rect.min.y + row as f32 * cell_size,
+                                    ),
+                                    Vec2::new(cell_size, cell_size),
+                                ),
+                                0.0,
+                                filled_cell_color,
+                            );
+                        }
                     }
+                    Some(unit) => match self.strategy_result.removals.unit {
+                        None => {}
+                        Some(Unit::Row) => {
+                            if !unit.contains(&row) {
+                                painter.rect_filled(
+                                    Rect::from_min_size(
+                                        Pos2::new(
+                                            response.rect.min.x,
+                                            response.rect.min.y + row as f32 * cell_size,
+                                        ),
+                                        Vec2::new(board_size, cell_size),
+                                    ),
+                                    0.0,
+                                    shade_color,
+                                );
+                            }
+                        }
+                        Some(Unit::Column) => {
+                            if !unit.contains(&col) {
+                                painter.rect_filled(
+                                    Rect::from_min_size(
+                                        Pos2::new(
+                                            response.rect.min.x + col as f32 * cell_size,
+                                            response.rect.min.y,
+                                        ),
+                                        Vec2::new(cell_size, board_size),
+                                    ),
+                                    0.0,
+                                    shade_color,
+                                );
+                            }
+                        }
+                        Some(Unit::Box) => {
+                            let box_row = row / 3;
+                            let box_col = col / 3;
+                            let box_index = (box_row * 3) + box_col;
+                            if !unit.contains(&box_index) {
+                                painter.rect_filled(
+                                    Rect::from_min_size(
+                                        Pos2::new(
+                                            response.rect.min.x + box_col as f32 * 3.0 * cell_size,
+                                            response.rect.min.y + box_row as f32 * 3.0 * cell_size,
+                                        ),
+                                        Vec2::new(3.0 * cell_size, 3.0 * cell_size),
+                                    ),
+                                    0.0,
+                                    shade_color,
+                                );
+                            }
+                        }
+                    },
                 }
             }
         }
