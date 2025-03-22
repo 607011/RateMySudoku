@@ -1,4 +1,3 @@
-use rand::Rng;
 use rand::seq::SliceRandom;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -314,6 +313,16 @@ impl Sudoku {
     #[allow(dead_code)]
     pub fn rating(&self) -> HashMap<Strategy, usize> {
         self.rating.clone()
+    }
+
+    pub fn difficulty(&self) -> f64 {
+        let candidates_removed = self.rating.iter().map(|(_, &count)| count).sum::<usize>();
+        let total_rating: i32 = self
+            .rating
+            .iter()
+            .map(|(strategy, &count)| strategy.difficulty() * count as i32)
+            .sum();
+        (total_rating as f64) / (candidates_removed as f64)
     }
 
     pub fn serialized(&self) -> String {
@@ -1925,6 +1934,22 @@ impl Sudoku {
         self.is_solved()
     }
 
+    pub fn solve_human_like(&mut self) -> bool {
+        // The first step always is to calculate the notes
+        self.calc_all_notes();
+        // Since we're starting from scratch, we clear the rating
+        self.rating.clear();
+        while self.unsolved() {
+            let result = self.next_step();
+            if result.strategy == Strategy::None {
+                // No applicable strategy found or Sudoku is solved
+                break;
+            }
+            self.apply(&result);
+        }
+        self.is_solved()
+    }
+
     #[cfg(feature = "dump")]
     pub fn solve_puzzle(&mut self) {
         self.solve_like_a_human();
@@ -1964,7 +1989,7 @@ impl Sudoku {
 
     /// Generates a new Sudoku puzzle with a given number of filled cells.
     /// The puzzle is guaranteed to have a unique solution.
-    pub fn generate(filled_cells: usize) -> Self {
+    pub fn generate(filled_cells: usize) -> Option<Self> {
         let mut rng = rand::rng();
         let mut numbers: Vec<u8> = (1..=9).collect();
         let mut sudoku = Sudoku::new();
@@ -1996,28 +2021,33 @@ impl Sudoku {
         let mut cells_to_remove = 81 - filled_cells;
         let mut removed_cells = Vec::new();
 
+        // Get all filled cells that haven't been removed yet
+        let mut available_cells: Vec<(usize, usize)> = (0..9)
+            .flat_map(|row| (0..9).map(move |col| (row, col)))
+            .filter(|&(row, col)| {
+                sudoku.board[row][col] != EMPTY && !removed_cells.contains(&(row, col))
+            })
+            .collect();
         while cells_to_remove > 0 {
-            // Get all filled cells that haven't been removed yet
-            let mut available_cells = Vec::new();
-            for row in 0..9 {
-                for col in 0..9 {
-                    if sudoku.board[row][col] != EMPTY && !removed_cells.contains(&(row, col)) {
-                        available_cells.push((row, col));
-                    }
-                }
-            }
-
             // No more cells to remove
             if available_cells.is_empty() {
                 break;
             }
 
             // Choose a random cell to remove
-            let idx = rng.random_range(0..available_cells.len());
-            let (row, col) = available_cells[idx];
+            // No more cells to remove
+            if available_cells.is_empty() {
+                break;
+            }
 
-            // Remember the value and remove it
-            let value = sudoku.board[row][col];
+            // If this is the first iteration, shuffle all available cells
+            if cells_to_remove == 81 - filled_cells {
+                available_cells.shuffle(&mut rng);
+            }
+
+            // Take the last cell from the shuffled list
+            let (row, col) = available_cells.pop().unwrap();
+
             sudoku.board[row][col] = EMPTY;
 
             // Check if the puzzle still has a unique solution
@@ -2076,11 +2106,10 @@ impl Sudoku {
                 removed_cells.push((row, col));
                 cells_to_remove -= 1;
             } else {
-                // Put the value back
-                sudoku.board[row][col] = value;
+                return None;
             }
         }
 
-        sudoku.clone()
+        Some(sudoku)
     }
 }
