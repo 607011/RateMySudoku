@@ -731,13 +731,9 @@ impl Sudoku {
         for row in 0..9 {
             for num in 1..=9 {
                 // Track cells with candidate `num` in this row
-                let mut cells_with_num = Vec::new();
-                for col in 0..9 {
-                    if !self.candidates[row][col].contains(&num) {
-                        continue;
-                    }
-                    cells_with_num.push(col);
-                }
+                let cells_with_num: Vec<_> = (0..9)
+                    .filter(|&col| self.candidates[row][col].contains(&num))
+                    .collect();
                 if !Self::is_claiming_pair(&cells_with_num) {
                     continue;
                 }
@@ -784,14 +780,9 @@ impl Sudoku {
         let mut result = RemovalResult::empty();
         for col in 0..9 {
             for num in 1..=9 {
-                // Find cells in this column that contain the number as a candidate
-                let mut cells_with_num = Vec::new();
-                for row in 0..9 {
-                    if !self.candidates[row][col].contains(&num) {
-                        continue;
-                    }
-                    cells_with_num.push(row);
-                }
+                let cells_with_num: Vec<_> = (0..9)
+                    .filter(|&row| self.candidates[row][col].contains(&num))
+                    .collect();
                 if !Self::is_claiming_pair(&cells_with_num) {
                     continue;
                 }
