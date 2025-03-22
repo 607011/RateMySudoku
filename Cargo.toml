@@ -3,9 +3,9 @@ name = "rate-my-sudoku"
 version = "0.1.0"
 edition = "2024"
 authors = ["Oliver Lau"]
-repository = "https://github.com/607011/sudoku-rust"
+repository = "https://github.com/607011/RateMySudoku"
 license = "MIT"
-description = "A Sudoku puzzle solver and generator"
+description = "A Sudoku puzzle solver and rating tool."
 keywords = ["sudoku", "puzzle", "game"]
 categories = ["games"]
 
@@ -13,8 +13,9 @@ categories = ["games"]
 eframe = { version = "^0.31", features = ["persistence", "glow", "default_fonts", "wayland"] }
 egui = { version = "^0.31", features = ["persistence"] }
 serde = { version = "1.0", features = ["derive"] }
-log = "0.4"
+log = "^0.4"
 env_logger = "^0.11"
+rand = "^0.9"
 
 [features]
 default = ["dump"]
@@ -47,4 +48,9 @@ path = "src/ui.rs"
 [[bin]]
 name = "rate"
 path = "src/rate.rs"
+required-features = ["dump"]
+
+[[bin]]
+name = "gen"
+path = "src/gen.rs"
 required-features = ["dump"]
