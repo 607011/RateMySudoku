@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use rate_my_sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku, Unit};
+use rate_my_sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku, SudokuError, Unit};
 
 use eframe::Storage;
 use eframe::egui;
@@ -333,17 +333,15 @@ impl eframe::App for SudokuApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             if ctx.input(|i| {
                 i.events.iter().any(|e| match e {
-                    Event::Paste(text) => {
-                        let digits: String = text.chars().filter(|c| c.is_ascii_digit()).collect();
-                        if digits.len() != 81 {
-                            return false;
+                    Event::Paste(board_string) => {
+                        log::info!("Pasted sudoku: {}", &board_string);
+                        if let Ok(board_string) = self.sudoku.set_board_string(board_string) {
+                            self.settings.sudoku_string = board_string.clone();
+                            self.state = State::CalculateNotes;
+                            self.strategy_result.clear();
+                            return true;
                         }
-                        log::info!("Pasted sudoku: {}", &digits);
-                        self.sudoku.set_board_string(&digits);
-                        self.settings.sudoku_string = digits;
-                        self.state = State::CalculateNotes;
-                        self.strategy_result.clear();
-                        true
+                        false
                     }
                     Event::Copy => {
                         log::info!("Use the 'Copy to clipboard' button");
@@ -432,18 +430,19 @@ impl eframe::App for SudokuApp {
 
 impl SudokuApp {
     #[cfg(not(target_arch = "wasm32"))]
-    fn load(&mut self, storage: &dyn Storage) {
+    fn load(&mut self, storage: &dyn Storage) -> Result<String, SudokuError> {
         self.sudoku.set_board_string(
             "008000063030000000000047120006000000001830400000901700000408031000500204200000000",
-        );
+        )?;
         if let Some(path) = eframe::storage_dir(APP_NAME) {
             log::info!("Trying to load saved sudoku from {}", path.display());
         }
         if let Some(settings) = eframe::get_value::<AppSettings>(storage, eframe::APP_KEY) {
             log::info!("Loaded sudoku from storage: {}", settings.sudoku_string);
-            self.sudoku.set_board_string(&settings.sudoku_string);
+            self.sudoku.set_board_string(&settings.sudoku_string)?;
         }
         self.settings.sudoku_string = self.sudoku.serialized();
+        Ok(self.settings.sudoku_string.clone())
     }
 
     fn proceed(&mut self) {
@@ -492,7 +491,7 @@ fn main() -> eframe::Result<()> {
         Box::new(|cc| {
             let mut app = SudokuApp::default();
             if let Some(storage) = cc.storage {
-                app.load(storage);
+                app.load(storage)?;
             }
             Ok(Box::new(app))
         }),
