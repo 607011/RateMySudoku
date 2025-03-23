@@ -900,10 +900,10 @@ impl Sudoku {
     }
 
     pub fn restore(&mut self) {
-        self.set_board_string(&self.original_board());
+        let _ = self.set_board_string(&self.original_board());
     }
 
-    pub fn set_board_string(&mut self, board_string: &str) {
+    pub fn set_board_string(&mut self, board_string: &str) -> Result<String, SudokuError> {
         let board_string = if board_string.contains(' ') || board_string.contains('\n') {
             // Handle formatted board with spaces and newlines
             board_string
@@ -923,10 +923,11 @@ impl Sudoku {
             board_string.replace(['.', '_'], "0")
         };
         if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
-            log::error!(
-                "Invalid Sudoku board: board string must contain exactly 81 digits or dots"
-            );
-            return;
+            return Err(SudokuError {
+                message:
+                    "Invalid Sudoku board: board string must contain exactly 81 digits or dots"
+                        .to_string(),
+            });
         }
         self.clear();
         let digits = board_string
@@ -940,5 +941,6 @@ impl Sudoku {
             self.board[row][col] = digit;
             self.original_board[row][col] = digit;
         }
+        Ok(board_string)
     }
 }
