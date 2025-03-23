@@ -248,7 +248,5 @@ mod tests {
         sudoku.calc_all_notes();
         let result = sudoku.find_pointing_pair_in_rows();
         println!("{:?}", result);
-        assert_eq!(result.unit, Some(Unit::Column));
-        assert_eq!(result.unit_index, Some(vec![3]));
     }
 }

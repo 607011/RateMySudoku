@@ -1797,7 +1797,7 @@ impl Sudoku {
                             continue;
                         }
                         // Store the cells involved in the triplet
-                        let triplet_cols = vec![col1, col2, col3];
+                        let triplet_cols = [col1, col2, col3];
                         // Record the candidates in these cells as affected
                         result
                             .candidates_affected
@@ -1873,7 +1873,7 @@ impl Sudoku {
                             continue;
                         }
                         // Store the cells involved in the triplet
-                        let triplet_rows = vec![row1, row2, row3];
+                        let triplet_rows = [row1, row2, row3];
                         // Record the candidates in these cells as affected
                         result
                             .candidates_affected
@@ -1935,8 +1935,9 @@ impl Sudoku {
                 let ((row1, col1), cands1) = cells_with_candidates[i];
                 for j in (i + 1)..cells_with_candidates.len() {
                     let ((row2, col2), cands2) = cells_with_candidates[j];
-                    for k in (j + 1)..cells_with_candidates.len() {
-                        let ((row3, col3), cands3) = cells_with_candidates[k];
+                    for (_k, ((row3, col3), cands3)) in
+                        cells_with_candidates.iter().enumerate().skip(j + 1)
+                    {
                         // Combine candidates from all three cells
                         let combined_candidates: HashSet<u8> = cands1
                             .union(cands2)
@@ -1950,7 +1951,7 @@ impl Sudoku {
                             continue;
                         }
                         // Store the cells involved in the triplet
-                        let triplet_cells = vec![(row1, col1), (row2, col2), (row3, col3)];
+                        let triplet_cells = [(row1, col1), (row2, col2), (*row3, *col3)];
                         // Record the candidates in these cells as affected
                         result
                             .candidates_affected
@@ -2644,7 +2645,7 @@ impl Sudoku {
                 .collect::<String>()
         } else {
             // Handle compact board string
-            board_string.replace('.', "0").replace('_', "0")
+            board_string.replace(['.', '_'], "0")
         };
         if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
             log::error!(
@@ -2690,9 +2691,7 @@ impl Sudoku {
             .collect();
         available_cells.shuffle(&mut rng);
         available_cells.truncate(81 - filled_cells);
-        while !available_cells.is_empty() {
-            // Take the last cell from the shuffled list
-            let (row, col) = available_cells.pop().unwrap();
+        while let Some((row, col)) = available_cells.pop() {
             sudoku.board[row][col] = EMPTY;
             // Check if the puzzle still has a unique solution
             let mut test_sudoku = sudoku.clone();
