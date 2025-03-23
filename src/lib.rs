@@ -183,6 +183,20 @@ impl Resolution {
     }
 }
 
+// Define a custom error for invalid Sudoku board
+#[derive(Debug)]
+pub struct SudokuError {
+    pub message: String,
+}
+
+impl std::fmt::Display for SudokuError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for SudokuError {}
+
 #[derive(Debug, Clone)]
 pub struct Sudoku {
     pub board: [[u8; 9]; 9],
@@ -221,11 +235,10 @@ impl Sudoku {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn from_string(s: &str) -> Sudoku {
+    pub fn from_string(board_string: &str) -> Result<Sudoku, SudokuError> {
         let mut sudoku = Sudoku::new();
-        sudoku.set_board_string(s);
-        sudoku
+        sudoku.set_board_string(board_string)?;
+        Ok(sudoku)
     }
 
     pub fn clear(&mut self) {
