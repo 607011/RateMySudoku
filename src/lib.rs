@@ -2543,65 +2543,30 @@ impl Sudoku {
     /// The puzzle is guaranteed to have a unique solution.
     pub fn generate(filled_cells: usize) -> Option<Self> {
         let mut rng = rand::rng();
-        let mut numbers: Vec<u8> = (1..=9).collect();
+        let mut all_digits: Vec<u8> = (1..=9).collect();
         let mut sudoku = Sudoku::new();
-
         // Fill the 3 diagonal boxes (top-left, middle, bottom-right)
         for box_idx in 0..3 {
             let start_row = box_idx * 3;
             let start_col = box_idx * 3;
-            // Create a random permutation of 1-9
-            numbers.shuffle(&mut rng);
-
-            // Fill the box
-            for i in 0..3 {
-                for j in 0..3 {
-                    let row = start_row + i;
-                    let col = start_col + j;
-                    sudoku.board[row][col] = numbers[i * 3 + j];
-                }
+            // Fill the box with a shuffled sequence of 1-9
+            all_digits.shuffle(&mut rng);
+            for (i, &num) in all_digits.iter().enumerate() {
+                sudoku.board[start_row + i / 3][start_col + i % 3] = num;
             }
         }
-
         sudoku.solve_by_backtracking();
-
-        // Make a copy of the solved board
-        let solved_board = sudoku.board;
-        sudoku.original_board = solved_board;
-
-        // Start with a fully solved puzzle and progressively remove cells
-        let mut cells_to_remove = 81 - filled_cells;
-        let mut removed_cells = Vec::new();
-
         // Get all filled cells that haven't been removed yet
         let mut available_cells: Vec<(usize, usize)> = (0..9)
             .flat_map(|row| (0..9).map(move |col| (row, col)))
-            .filter(|&(row, col)| {
-                sudoku.board[row][col] != EMPTY && !removed_cells.contains(&(row, col))
-            })
+            .filter(|&(row, col)| sudoku.board[row][col] != EMPTY)
             .collect();
-        while cells_to_remove > 0 {
-            // No more cells to remove
-            if available_cells.is_empty() {
-                break;
-            }
-
-            // Choose a random cell to remove
-            // No more cells to remove
-            if available_cells.is_empty() {
-                break;
-            }
-
-            // If this is the first iteration, shuffle all available cells
-            if cells_to_remove == 81 - filled_cells {
-                available_cells.shuffle(&mut rng);
-            }
-
+        available_cells.shuffle(&mut rng);
+        available_cells.truncate(81 - filled_cells);
+        while !available_cells.is_empty() {
             // Take the last cell from the shuffled list
             let (row, col) = available_cells.pop().unwrap();
-
             sudoku.board[row][col] = EMPTY;
-
             // Check if the puzzle still has a unique solution
             let mut test_sudoku = sudoku.clone();
 
@@ -2610,12 +2575,9 @@ impl Sudoku {
                 if *count >= max_count {
                     return true; // Early return if we already found enough solutions
                 }
-
-                // Find an empty cell
                 let mut found_empty = false;
                 let mut empty_row = 0;
                 let mut empty_col = 0;
-
                 'find_empty: for r in 0..9 {
                     for c in 0..9 {
                         if sudoku.board[r][c] == EMPTY {
@@ -2626,42 +2588,34 @@ impl Sudoku {
                         }
                     }
                 }
-
                 // If no empty cell is found, we have a solution
                 if !found_empty {
                     *count += 1;
                     return *count >= max_count;
                 }
-
                 // Try each possible value
                 for num in 1..=9 {
-                    if sudoku.can_place(empty_row, empty_col, num) {
-                        // Place and recurse
-                        sudoku.board[empty_row][empty_col] = num;
-                        if count_solutions(sudoku, count, max_count) {
-                            return true;
-                        }
-                        // Backtrack
-                        sudoku.board[empty_row][empty_col] = EMPTY;
+                    if !sudoku.can_place(empty_row, empty_col, num) {
+                        continue;
                     }
+                    // Place and recurse
+                    sudoku.board[empty_row][empty_col] = num;
+                    if count_solutions(sudoku, count, max_count) {
+                        return true;
+                    }
+                    // Backtrack
+                    sudoku.board[empty_row][empty_col] = EMPTY;
                 }
-
                 false
             }
 
-            // We only need to know if there's exactly one solution
             let mut solution_count = 0;
             count_solutions(&mut test_sudoku, &mut solution_count, 2);
 
-            if solution_count == 1 {
-                // Cell can be safely removed
-                removed_cells.push((row, col));
-                cells_to_remove -= 1;
-            } else {
+            if solution_count != 1 {
                 return None;
             }
         }
-
         Some(sudoku)
     }
 }
