@@ -10,12 +10,17 @@ keywords = ["sudoku", "puzzle", "game"]
 categories = ["games"]
 
 [dependencies]
-eframe = { version = "^0.31", features = ["persistence", "glow", "default_fonts", "wayland"] }
+rand = { version = "^0.9" }
+eframe = { version = "^0.31", features = [
+    "persistence",
+    "glow",
+    "default_fonts",
+    "wayland",
+] }
 egui = { version = "^0.31", features = ["persistence"] }
 serde = { version = "1.0", features = ["derive"] }
 log = "^0.4"
 env_logger = "^0.11"
-rand = "^0.9"
 
 [features]
 default = ["dump"]
