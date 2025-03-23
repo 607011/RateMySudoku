@@ -3,7 +3,7 @@ use std::io::Write;
 use std::sync::mpsc;
 use std::thread;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let default_filled_cells: usize = 20;
     let args: Vec<String> = std::env::args().collect();
     let filled_cells = if args.len() > 1 {
@@ -15,7 +15,6 @@ fn main() {
     let (tx, rx) = mpsc::channel();
     let stdout_mutex = std::sync::Mutex::new(());
 
-    // Spawn worker threads
     for _ in 0..thread_count {
         let tx = tx.clone();
         thread::spawn(move || {
@@ -46,4 +45,6 @@ fn main() {
         }
         std::io::stdout().flush().unwrap();
     }
+
+    Ok(())
 }
