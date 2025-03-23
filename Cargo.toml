@@ -48,14 +48,14 @@ opt-level = 2
 
 [[bin]]
 name = "sudokui"
-path = "src/ui.rs"
+path = "src/ui/ui.rs"
 
 [[bin]]
 name = "rate"
-path = "src/rate.rs"
+path = "src/rate/rate.rs"
 required-features = ["dump"]
 
 [[bin]]
 name = "gen"
-path = "src/gen.rs"
+path = "src/gen/gen.rs"
 required-features = ["dump"]
