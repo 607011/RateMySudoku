@@ -16,7 +16,7 @@ If a strategy is successful, the affected candidates are removed or the cells ar
 
 After solving the Sudoku, the total difficulty is divided by the sum of the affected candidates and cells, which provides a good estimate of the perceived difficulty (effort). The higher the value, the more difficult the Sudoku typically is for a human. This software uses the same effort values as [HoDoKu](https://hodoku.sourceforge.net/).
 
-The following strategies are currently implemented:
+The following strategies are currently (about to be) implemented:
 
 | Code | Test | OK | Strategy               | Effort |
 |:----:|:----:|:--:| ---------------------- | ------:|
