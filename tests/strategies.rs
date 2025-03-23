@@ -184,7 +184,17 @@ mod tests {
     }
 
     #[test]
-    fn test_naked_triplet_col() {
+    fn test_locked_pair() {
+        let mut sudoku: Sudoku = Sudoku::from_string(
+            "000300000070080501009000830300704000700000004000105008061000900907040060000002000",
+        );
+        sudoku.calc_all_notes();
+        let result = sudoku.find_pointing_pair_in_rows();
+        println!("{:?}", result);
+    }
+
+    #[test]
+    fn test_naked_triplet() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "000294380000178640480356100004837501000415700500629834953782416126543978040961253",
         );
@@ -241,12 +251,135 @@ mod tests {
     }
 
     #[test]
-    fn test_locked_pair() {
+    fn test_naked_triplet_row() {
         let mut sudoku: Sudoku = Sudoku::from_string(
-            "000300000070080501009000830300704000700000004000105008061000900907040060000002000",
+            "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
         );
         sudoku.calc_all_notes();
-        let result = sudoku.find_pointing_pair_in_rows();
+        let result = sudoku.find_naked_triplet_in_rows();
         println!("{:?}", result);
+        assert_eq!(result.unit, Some(Unit::Row));
+        assert_eq!(result.unit_index, Some(vec![1]));
+        let affected = result.candidates_affected;
+        assert_eq!(affected.len(), 6);
+        let removals = result.candidates_about_to_be_removed;
+        assert_eq!(removals.len(), 4);
+    }
+
+    #[test]
+    fn test_naked_triplet_col() {
+        let mut sudoku: Sudoku = Sudoku::from_string(
+            "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
+        );
+        sudoku.calc_all_notes();
+        let result = sudoku.find_naked_triplet_in_cols();
+        println!("{:?}", result);
+        assert_eq!(result.unit, Some(Unit::Column));
+        assert_eq!(result.unit_index, Some(vec![5]));
+        let affected = result.candidates_affected;
+        assert_eq!(affected.len(), 9);
+        assert!(affected.contains(&Candidate {
+            row: 0,
+            col: 5,
+            num: 4
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 0,
+            col: 5,
+            num: 4
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 0,
+            col: 5,
+            num: 3
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 6,
+            col: 5,
+            num: 4
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 6,
+            col: 5,
+            num: 5
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 6,
+            col: 5,
+            num: 3
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 8,
+            col: 5,
+            num: 4
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 8,
+            col: 5,
+            num: 5
+        }));
+        assert!(affected.contains(&Candidate {
+            row: 8,
+            col: 5,
+            num: 3
+        }));
+        let removals = result.candidates_about_to_be_removed;
+        assert_eq!(removals.len(), 8);
+        assert!(removals.contains(&Candidate {
+            row: 4,
+            col: 5,
+            num: 4
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 5,
+            col: 5,
+            num: 4
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 4,
+            col: 5,
+            num: 5
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 1,
+            col: 5,
+            num: 5
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 5,
+            col: 5,
+            num: 3
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 1,
+            col: 5,
+            num: 3
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 1,
+            col: 5,
+            num: 4
+        }));
+        assert!(removals.contains(&Candidate {
+            row: 4,
+            col: 5,
+            num: 3
+        }));
+    }
+
+    #[test]
+    fn test_naked_triplet_box() {
+        let mut sudoku: Sudoku = Sudoku::from_string(
+            "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
+        );
+        sudoku.calc_all_notes();
+        let result = sudoku.find_naked_triplet_in_boxes();
+        println!("{:?}", result);
+        assert_eq!(result.unit, Some(Unit::Box));
+        assert_eq!(result.unit_index, Some(vec![4]));
+        let affected = result.candidates_affected;
+        assert_eq!(affected.len(), 8);
+        let removals = result.candidates_about_to_be_removed;
+        assert_eq!(removals.len(), 8);
     }
 }
