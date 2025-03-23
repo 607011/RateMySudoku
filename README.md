@@ -23,11 +23,13 @@ The following strategies are currently implemented:
 | Last Digit             |      4 |
 | Obvious Single         |      5 |
 | Hidden Single          |     14 |
+| Loecked Pair           |     40 |
 | Pointing Pair          |     50 |
 | Claiming Pair          |     50 |
 | Obvious Pair           |     60 |
 | Hidden Pair            |     70 |
 | Naked Triplet          |     80 |
+| Skyscraper             |    130 |
 | X-Wing                 |    140 |
 
 More to come …
