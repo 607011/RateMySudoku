@@ -12,6 +12,7 @@ mod nakedtriplet;
 mod obviouspair;
 mod obvioussingle;
 mod pointingpair;
+mod skyscraper;
 mod xwing;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -43,6 +44,7 @@ pub enum Strategy {
     PointingPair,
     ClaimingPair,
     NakedTriplet,
+    Skyscraper,
     XWing,
 }
 
@@ -59,6 +61,7 @@ impl Strategy {
             Strategy::ObviousPair => "Obvious Pair",
             Strategy::HiddenPair => "Hidden Pair",
             Strategy::NakedTriplet => "Naked Triplet",
+            Strategy::Skyscraper => "Skyscraper",
             Strategy::XWing => "X-Wing",
         }
     }
@@ -75,6 +78,7 @@ impl Strategy {
             Strategy::ObviousPair => 60,
             Strategy::HiddenPair => 70,
             Strategy::NakedTriplet => 80,
+            Strategy::Skyscraper => 130,
             Strategy::XWing => 140,
         }
     }
@@ -798,6 +802,20 @@ impl Sudoku {
             return StrategyResult {
                 removals: result.removals,
                 strategy: Strategy::NakedTriplet,
+            };
+        }
+
+        // skyscraper
+        let result = self.find_skyscraper();
+        if result.removals.will_remove_candidates() {
+            let nums_removed = result.removals.candidates_about_to_be_removed.len();
+            self.rating
+                .entry(Strategy::Skyscraper)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return StrategyResult {
+                removals: result.removals,
+                strategy: Strategy::Skyscraper,
             };
         }
 
