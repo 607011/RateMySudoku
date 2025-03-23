@@ -99,7 +99,7 @@ pub struct Candidate {
     pub num: u8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
     pub row: usize,
     pub col: usize,
