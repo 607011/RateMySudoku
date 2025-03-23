@@ -5,7 +5,8 @@ mod tests {
     fn test_claiming_pair_row() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "318005406000603810006080503864952137123476958795318264030500780000007305000039641",
-        ).expect("Failed to create Sudoku from string");
+        )
+        .expect("Failed to create Sudoku from string");
         sudoku.calc_all_notes();
         let result = sudoku.find_claiming_pair();
         assert_eq!(result.strategy, Strategy::ClaimingPair);
@@ -38,7 +39,8 @@ mod tests {
     fn test_claiming_pair_col() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "762008001980000006150000087478003169526009873319800425835001692297685314641932758",
-        ).expect("Failed to create Sudoku from string");
+        )
+        .expect("Failed to create Sudoku from string");
         sudoku.calc_all_notes();
         let result = sudoku.find_claiming_pair();
         assert_eq!(result.strategy, Strategy::ClaimingPair);

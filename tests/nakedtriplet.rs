@@ -5,7 +5,8 @@ mod tests {
     fn test_naked_triplet() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "000294380000178640480356100004837501000415700500629834953782416126543978040961253",
-        ).expect("Failed to create Sudoku from string");
+        )
+        .expect("Failed to create Sudoku from string");
         sudoku.calc_all_notes();
         let result = sudoku.find_naked_triplet();
         println!("{:?}", result);
@@ -62,7 +63,8 @@ mod tests {
     fn test_naked_triplet_row() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
-        ).expect("Failed to create Sudoku from string");
+        )
+        .expect("Failed to create Sudoku from string");
         sudoku.calc_all_notes();
         let result = sudoku.find_naked_triplet_in_rows();
         println!("{:?}", result);
@@ -128,7 +130,8 @@ mod tests {
     fn test_naked_triplet_col() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
-        ).expect("Failed to create Sudoku from string");
+        )
+        .expect("Failed to create Sudoku from string");
         sudoku.calc_all_notes();
         let result = sudoku.find_naked_triplet_in_cols();
         println!("{:?}", result);
@@ -229,7 +232,8 @@ mod tests {
     fn test_naked_triplet_box() {
         let mut sudoku: Sudoku = Sudoku::from_string(
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
-        ).expect("Failed to create Sudoku from string");
+        )
+        .expect("Failed to create Sudoku from string");
         sudoku.calc_all_notes();
         let result = sudoku.find_naked_triplet_in_boxes();
         println!("{:?}", result);
