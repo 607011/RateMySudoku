@@ -18,18 +18,56 @@ After solving the Sudoku, the total difficulty is divided by the sum of the affe
 
 The following strategies are currently implemented:
 
-| Strategy               | Effort |
-| ---------------------- | ------:|
-| Last Digit             |      4 |
-| Obvious Single         |      5 |
-| Hidden Single          |     14 |
-| Loecked Pair           |     40 |
-| Pointing Pair          |     50 |
-| Claiming Pair          |     50 |
-| Obvious Pair           |     60 |
-| Hidden Pair            |     70 |
-| Naked Triplet          |     80 |
-| Skyscraper             |    130 |
-| X-Wing                 |    140 |
+| Code | Test | OK | Strategy               | Effort |
+|:----:|:----:|:--:| ---------------------- | ------:|
+| ☒    | ☒    | ☒  | Last Digit             |      4 |
+| ☒    | ☒    | ☒  | Obvious Single         |      5 |
+| ☒    | ☐    | ☐  | Hidden Single          |     14 |
+| ☐    | ☐    | ☐  | Locked Pair            |     40 |
+| ☒    | ☒    | ☒  | Pointing Pair          |     50 |
+| ☒    | ☒    | ☒  | Claiming Pair          |     50 |
+| ☒    | ☐    | ☐  | Obvious Pair           |     60 |
+| ☒    | ☐    | ☐  | Hidden Pair            |     70 |
+| ☒    | ☒    | ☒  | Naked Triplet          |     80 |
+| ☒    | ☒    | ☐  | Skyscraper             |    130 |
+| ☒    | ☒    | ☐  | X-Wing                 |    140 |
 
 More to come …
+
+## How to use
+
+### Generator 
+
+Generate Sudokus with 23 filled cells and append them to the file generated/23.txt
+
+```
+cargo run --bin gen --release -- 23 >> generated/23.txt
+```
+
+### Visual Solver
+
+```
+cargo run --bin sudokui --release
+```
+
+### Sudoku Rater
+
+Rate the Sudoku
+
+```
+0 7 0 0 0 5 0 0 0
+0 0 0 0 0 6 0 1 0
+0 0 3 0 0 7 6 2 8
+0 0 0 1 6 0 0 0 0
+1 0 0 5 0 0 8 0 0
+0 0 6 0 0 4 2 0 0
+0 9 4 0 3 1 0 0 0
+0 0 0 0 0 0 4 0 0
+0 2 0 6 0 0 0 0 0
+```
+
+with
+
+```
+cargo run --bin rate --release -- 070005000000000010003007628000160000100500800006004200094031000000000400020600000
+```
