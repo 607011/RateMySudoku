@@ -2628,8 +2628,28 @@ impl Sudoku {
     }
 
     pub fn set_board_string(&mut self, board_string: &str) {
+        let board_string = if board_string.contains(' ') || board_string.contains('\n') {
+            // Handle formatted board with spaces and newlines
+            board_string
+                .chars()
+                .filter_map(|c| {
+                    if c.is_ascii_digit() {
+                        Some(c)
+                    } else if c == '.' || c == '_' {
+                        Some('0')
+                    } else {
+                        None
+                    }
+                })
+                .collect::<String>()
+        } else {
+            // Handle compact board string
+            board_string.replace('.', "0").replace('_', "0")
+        };
         if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
-            log::error!("Invalid Sudoku board: must contain exactly 81 numeric characters");
+            log::error!(
+                "Invalid Sudoku board: board string must contain exactly 81 digits or dots"
+            );
             return;
         }
         self.clear();
