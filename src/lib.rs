@@ -28,8 +28,10 @@ pub enum Strategy {
     HiddenSingle,
     ObviousPair,
     HiddenPair,
+    LockedPair,
     PointingPair,
     ClaimingPair,
+    NakedTriplet,
     XWing,
 }
 
@@ -40,10 +42,12 @@ impl Strategy {
             Strategy::LastDigit => "Last Digit",
             Strategy::ObviousSingle => "Obvious Single",
             Strategy::HiddenSingle => "Hidden Single",
+            Strategy::LockedPair => "Locked Pair",
             Strategy::PointingPair => "Pointing Pair",
             Strategy::ClaimingPair => "Claiming Pair",
             Strategy::ObviousPair => "Obvious Pair",
             Strategy::HiddenPair => "Hidden Pair",
+            Strategy::NakedTriplet => "Naked Triplet",
             Strategy::XWing => "X-Wing",
         }
     }
@@ -54,10 +58,12 @@ impl Strategy {
             Strategy::LastDigit => 4,
             Strategy::ObviousSingle => 5,
             Strategy::HiddenSingle => 14,
+            Strategy::LockedPair => 40,
             Strategy::PointingPair => 50,
             Strategy::ClaimingPair => 50,
             Strategy::ObviousPair => 60,
             Strategy::HiddenPair => 70,
+            Strategy::NakedTriplet => 80,
             Strategy::XWing => 140,
         }
     }
@@ -1646,6 +1652,524 @@ impl Sudoku {
         StrategyResult::empty()
     }
 
+    pub fn find_naked_triplet_in_rows(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for row in 0..9 {
+            // For each possible combination of three columns in the row
+            for col1 in 0..7 {
+                if self.board[row][col1] != EMPTY
+                    || self.candidates[row][col1].is_empty()
+                    || self.candidates[row][col1].len() > 3
+                {
+                    continue;
+                }
+                for col2 in (col1 + 1)..8 {
+                    if self.board[row][col2] != EMPTY
+                        || self.candidates[row][col2].is_empty()
+                        || self.candidates[row][col2].len() > 3
+                    {
+                        continue;
+                    }
+                    for col3 in (col2 + 1)..9 {
+                        if self.board[row][col3] != EMPTY
+                            || self.candidates[row][col3].is_empty()
+                            || self.candidates[row][col3].len() > 3
+                        {
+                            continue;
+                        }
+                        // Combine candidates from all three cells
+                        let combined_candidates: HashSet<u8> = self.candidates[row][col1]
+                            .union(&self.candidates[row][col2])
+                            .cloned()
+                            .collect::<HashSet<u8>>()
+                            .union(&self.candidates[row][col3])
+                            .cloned()
+                            .collect();
+                        // If we have exactly 3 unique candidates across these cells, we have a naked triplet
+                        if combined_candidates.len() != 3 {
+                            continue;
+                        }
+                        // Store the cells involved in the triplet
+                        let triplet_cols = vec![col1, col2, col3];
+                        // Record the candidates in these cells as affected
+                        result
+                            .candidates_affected
+                            .extend(triplet_cols.iter().flat_map(|&col| {
+                                combined_candidates
+                                    .iter()
+                                    .filter(move |&&num| self.candidates[row][col].contains(&num))
+                                    .map(move |&num| Candidate { row, col, num })
+                            }));
+                        // Remove these candidates from other cells in the same row
+                        for col in 0..9 {
+                            if triplet_cols.contains(&col) {
+                                continue; // Skip the triplet cells
+                            }
+                            combined_candidates
+                                .iter()
+                                .filter(|&&num| self.candidates[row][col].contains(&num))
+                                .for_each(|&num| {
+                                    result.candidates_about_to_be_removed.insert(Candidate {
+                                        row,
+                                        col,
+                                        num,
+                                    });
+                                });
+                        }
+                        if result.will_remove_candidates() {
+                            result.unit = Some(Unit::Row);
+                            result.unit_index = Some(vec![row]);
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_naked_triplet_in_cols(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for col in 0..9 {
+            // For each possible combination of three rows in the column
+            for row1 in 0..7 {
+                if self.board[row1][col] != EMPTY
+                    || self.candidates[row1][col].is_empty()
+                    || self.candidates[row1][col].len() > 3
+                {
+                    continue;
+                }
+                for row2 in (row1 + 1)..8 {
+                    if self.board[row2][col] != EMPTY
+                        || self.candidates[row2][col].is_empty()
+                        || self.candidates[row2][col].len() > 3
+                    {
+                        continue;
+                    }
+                    for row3 in (row2 + 1)..9 {
+                        if self.board[row3][col] != EMPTY
+                            || self.candidates[row3][col].is_empty()
+                            || self.candidates[row3][col].len() > 3
+                        {
+                            continue;
+                        }
+                        // Combine candidates from all three cells
+                        let combined_candidates: HashSet<u8> = self.candidates[row1][col]
+                            .union(&self.candidates[row2][col])
+                            .cloned()
+                            .collect::<HashSet<u8>>()
+                            .union(&self.candidates[row3][col])
+                            .cloned()
+                            .collect();
+                        // If we have exactly 3 unique candidates across these cells, we have a naked triplet
+                        if combined_candidates.len() != 3 {
+                            continue;
+                        }
+                        // Store the cells involved in the triplet
+                        let triplet_rows = vec![row1, row2, row3];
+                        // Record the candidates in these cells as affected
+                        result
+                            .candidates_affected
+                            .extend(triplet_rows.iter().flat_map(|&row| {
+                                combined_candidates
+                                    .iter()
+                                    .filter(move |&&num| self.candidates[row][col].contains(&num))
+                                    .map(move |&num| Candidate { row, col, num })
+                            }));
+                        // Remove these candidates from other cells in the same column
+                        for row in 0..9 {
+                            if triplet_rows.contains(&row) {
+                                continue; // Skip the triplet cells
+                            }
+                            combined_candidates
+                                .iter()
+                                .filter(|&&num| self.candidates[row][col].contains(&num))
+                                .for_each(|&num| {
+                                    result.candidates_about_to_be_removed.insert(Candidate {
+                                        row,
+                                        col,
+                                        num,
+                                    });
+                                });
+                        }
+                        if result.will_remove_candidates() {
+                            result.unit = Some(Unit::Column);
+                            result.unit_index = Some(vec![col]);
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_naked_triplet_in_boxes(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for box_idx in 0..9 {
+            let start_row = 3 * (box_idx / 3);
+            let start_col = 3 * (box_idx % 3);
+            // Create a vector of all cells with their position and candidates
+            let cells_with_candidates: Vec<_> = (0..3)
+                .flat_map(|i| (0..3).map(move |j| (start_row + i, start_col + j)))
+                .filter_map(|(row, col)| {
+                    if self.board[row][col] == EMPTY
+                        && !self.candidates[row][col].is_empty()
+                        && self.candidates[row][col].len() <= 3
+                    {
+                        Some(((row, col), &self.candidates[row][col]))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            // Find all combinations of three cells
+            for i in 0..cells_with_candidates.len() {
+                let ((row1, col1), cands1) = cells_with_candidates[i];
+                for j in (i + 1)..cells_with_candidates.len() {
+                    let ((row2, col2), cands2) = cells_with_candidates[j];
+                    for k in (j + 1)..cells_with_candidates.len() {
+                        let ((row3, col3), cands3) = cells_with_candidates[k];
+                        // Combine candidates from all three cells
+                        let combined_candidates: HashSet<u8> = cands1
+                            .union(cands2)
+                            .cloned()
+                            .collect::<HashSet<u8>>()
+                            .union(cands3)
+                            .cloned()
+                            .collect();
+                        // If we have exactly 3 unique candidates across these cells, we have a naked triplet
+                        if combined_candidates.len() != 3 {
+                            continue;
+                        }
+                        // Store the cells involved in the triplet
+                        let triplet_cells = vec![(row1, col1), (row2, col2), (row3, col3)];
+                        // Record the candidates in these cells as affected
+                        result
+                            .candidates_affected
+                            .extend(triplet_cells.iter().flat_map(|&(row, col)| {
+                                combined_candidates
+                                    .iter()
+                                    .filter(move |&&num| self.candidates[row][col].contains(&num))
+                                    .map(move |&num| Candidate { row, col, num })
+                            }));
+                        // Remove these candidates from other cells in the same box
+                        for r in 0..3 {
+                            for c in 0..3 {
+                                let row = start_row + r;
+                                let col = start_col + c;
+                                let cell = (row, col);
+                                if triplet_cells.contains(&cell) {
+                                    continue; // Skip the triplet cells
+                                }
+                                for &num in &combined_candidates {
+                                    if self.candidates[row][col].contains(&num) {
+                                        result.candidates_about_to_be_removed.insert(Candidate {
+                                            row,
+                                            col,
+                                            num,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        if result.will_remove_candidates() {
+                            result.unit = Some(Unit::Box);
+                            result.unit_index = Some(vec![box_idx]);
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_naked_triplet(&self) -> StrategyResult {
+        log::info!("Finding naked triplets in rows");
+        let result = self.find_naked_triplet_in_rows();
+        if result.will_remove_candidates() {
+            return StrategyResult {
+                strategy: Strategy::NakedTriplet,
+                removals: result,
+            };
+        }
+        log::info!("Finding naked triplets in columns");
+        let result = self.find_naked_triplet_in_cols();
+        if result.will_remove_candidates() {
+            return StrategyResult {
+                strategy: Strategy::NakedTriplet,
+                removals: result,
+            };
+        }
+        log::info!("Finding naked triplets in boxes");
+        let result = self.find_naked_triplet_in_boxes();
+        StrategyResult {
+            strategy: Strategy::NakedTriplet,
+            removals: result,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn find_cells_with_candidate_in_box(&self, box_idx: usize, num: u8) -> Vec<(usize, usize)> {
+        let start_row = 3 * (box_idx / 3);
+        let start_col = 3 * (box_idx % 3);
+        (0..3)
+            .flat_map(|r| (0..3).map(move |c| (start_row + r, start_col + c)))
+            .filter(|&(row, col)| self.candidates[row][col].contains(&num))
+            .collect()
+    }
+
+    /// Check if all cells are in the same row.
+    #[allow(dead_code)]
+    fn cells_in_same_row(cells: &[(usize, usize)]) -> Option<usize> {
+        let rows: HashSet<_> = cells.iter().map(|&(row, _)| row).collect();
+        if rows.len() == 1 {
+            Some(*rows.iter().next().unwrap())
+        } else {
+            None
+        }
+    }
+
+    /// Check if all cells are in the same column.
+    #[allow(dead_code)]
+    fn cells_in_same_column(cells: &[(usize, usize)]) -> Option<usize> {
+        let cols: HashSet<_> = cells.iter().map(|&(_, col)| col).collect();
+        if cols.len() == 1 {
+            Some(*cols.iter().next().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn find_locked_pair_rows(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for row in 0..9 {
+            for num in 1..=9 {
+                // Find all columns in this row that have this candidate
+                let cols: Vec<_> = (0..9)
+                    .filter(|&col| self.candidates[row][col].contains(&num))
+                    .collect();
+                if cols.len() != 2 {
+                    continue;
+                }
+                // Check if any other row has this candidate in either of our two columns
+                let has_other_row_with_candidate = (0..9).filter(|&r| r != row).any(|r| {
+                    cols.iter()
+                        .any(|&col| self.candidates[r][col].contains(&num))
+                });
+                if has_other_row_with_candidate {
+                    continue;
+                }
+                log::info!("Found locked pair {:?} in row {}", num, row);
+                result.candidates_affected.push(Candidate {
+                    row,
+                    col: cols[0],
+                    num,
+                });
+                result.candidates_affected.push(Candidate {
+                    row,
+                    col: cols[1],
+                    num,
+                });
+                // Remove this candidate from other cells in the same row
+                for col in 0..9 {
+                    if !cols.contains(&col) && self.candidates[row][col].contains(&num) {
+                        result
+                            .candidates_about_to_be_removed
+                            .insert(Candidate { row, col, num });
+                    }
+                }
+                if result.will_remove_candidates() {
+                    result.unit = Some(Unit::Row);
+                    result.unit_index = Some(vec![row]);
+                    return result;
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_locked_pair_cols(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for col in 0..9 {
+            for num in 1..=9 {
+                // Find all rows in this column that have this candidate
+                let rows: Vec<_> = (0..9)
+                    .filter(|&row| self.candidates[row][col].contains(&num))
+                    .collect();
+                if rows.len() != 2 {
+                    continue;
+                }
+                // Check if any other column has this candidate in either of our two rows
+                let has_other_col_with_candidate = (0..9).filter(|&c| c != col).any(|c| {
+                    rows.iter()
+                        .any(|&row| self.candidates[row][c].contains(&num))
+                });
+                if has_other_col_with_candidate {
+                    continue;
+                }
+                log::info!("Found locked pair {:?} in column {}", num, col);
+                result.candidates_affected.push(Candidate {
+                    row: rows[0],
+                    col,
+                    num,
+                });
+                result.candidates_affected.push(Candidate {
+                    row: rows[1],
+                    col,
+                    num,
+                });
+                // Remove this candidate from other cells in the same column
+                for row in 0..9 {
+                    if !rows.contains(&row) && self.candidates[row][col].contains(&num) {
+                        result
+                            .candidates_about_to_be_removed
+                            .insert(Candidate { row, col, num });
+                    }
+                }
+                if result.will_remove_candidates() {
+                    result.unit = Some(Unit::Column);
+                    result.unit_index = Some(vec![col]);
+                    return result;
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_locked_pair_boxes(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for box_idx in 0..9 {
+            let start_row = 3 * (box_idx / 3);
+            let start_col = 3 * (box_idx % 3);
+            for num in 1..=9 {
+                // Find all cells in this box that have this candidate
+                let mut cells_with_num = Vec::new();
+                for r in 0..3 {
+                    for c in 0..3 {
+                        let row = start_row + r;
+                        let col = start_col + c;
+                        if self.candidates[row][col].contains(&num) {
+                            cells_with_num.push((row, col));
+                        }
+                    }
+                }
+                if cells_with_num.len() != 2 {
+                    continue;
+                }
+                let (row1, col1) = cells_with_num[0];
+                let (row2, col2) = cells_with_num[1];
+                // Check if the cells are in the same row
+                if row1 != row2 {
+                    continue;
+                }
+                // Check if any other box in the same row has this candidate
+                let has_other_box_with_candidate = (0..9)
+                    .filter(|&c| c < start_col || c >= start_col + 3)
+                    .any(|c| self.candidates[row1][c].contains(&num));
+                if has_other_box_with_candidate {
+                    continue;
+                }
+                // Remove this candidate from other cells in the same box but different row
+                for r in start_row..start_row + 3 {
+                    if r != row1 {
+                        for c in start_col..start_col + 3 {
+                            if self.candidates[r][c].contains(&num) {
+                                result.candidates_about_to_be_removed.insert(Candidate {
+                                    row: r,
+                                    col: c,
+                                    num,
+                                });
+                            }
+                        }
+                    }
+                }
+                if result.will_remove_candidates() {
+                    result.candidates_affected.push(Candidate {
+                        row: row1,
+                        col: col1,
+                        num,
+                    });
+                    result.candidates_affected.push(Candidate {
+                        row: row2,
+                        col: col2,
+                        num,
+                    });
+                    result.unit = Some(Unit::Box);
+                    result.unit_index = Some(vec![box_idx]);
+                    return result;
+                }
+                // Check if the cells are in the same column
+                if col1 != col2 {
+                    continue;
+                }
+                // Check if any other box in the same column has this candidate
+                let has_other_box_with_candidate = (0..9)
+                    .filter(|&r| r < start_row || r >= start_row + 3)
+                    .any(|r| self.candidates[r][col1].contains(&num));
+                if has_other_box_with_candidate {
+                    continue;
+                }
+                // Remove this candidate from other cells in the same box but different column
+                for c in start_col..start_col + 3 {
+                    if c != col1 {
+                        for r in start_row..start_row + 3 {
+                            if self.candidates[r][c].contains(&num) {
+                                result.candidates_about_to_be_removed.insert(Candidate {
+                                    row: r,
+                                    col: c,
+                                    num,
+                                });
+                            }
+                        }
+                    }
+                }
+                if result.will_remove_candidates() {
+                    result.candidates_affected.push(Candidate {
+                        row: row1,
+                        col: col1,
+                        num,
+                    });
+                    result.candidates_affected.push(Candidate {
+                        row: row2,
+                        col: col2,
+                        num,
+                    });
+                    result.unit = Some(Unit::Box);
+                    result.unit_index = Some(vec![box_idx]);
+                    return result;
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_locked_pair(&self) -> StrategyResult {
+        log::info!("Finding locked pairs in rows");
+        let result = self.find_locked_pair_rows();
+        if result.will_remove_candidates() {
+            return StrategyResult {
+                strategy: Strategy::LockedPair,
+                removals: result,
+            };
+        }
+        log::info!("Finding locked pairs in columns");
+        let result = self.find_locked_pair_cols();
+        if result.will_remove_candidates() {
+            return StrategyResult {
+                strategy: Strategy::LockedPair,
+                removals: result,
+            };
+        }
+        log::info!("Finding locked pairs in boxes");
+        let result = self.find_locked_pair_boxes();
+        StrategyResult {
+            strategy: Strategy::LockedPair,
+            removals: result,
+        }
+    }
+
     /// Collect all candidates in a row that contain a given digit.
     fn collect_candidates_in_row(&self, nums: &[u8], row: usize) -> RemovalResult {
         let mut result = RemovalResult::empty();
@@ -1841,6 +2365,20 @@ impl Sudoku {
             };
         }
 
+        // locked pair
+        let result = self.find_locked_pair();
+        if result.removals.will_remove_candidates() {
+            let nums_removed = result.removals.candidates_about_to_be_removed.len();
+            self.rating
+                .entry(Strategy::LockedPair)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return StrategyResult {
+                removals: result.removals,
+                strategy: Strategy::LockedPair,
+            };
+        }
+
         // pointing pair
         let result = self.find_pointing_pair();
         if result.removals.will_remove_candidates() {
@@ -1894,6 +2432,20 @@ impl Sudoku {
             return StrategyResult {
                 removals: result.removals,
                 strategy: Strategy::HiddenPair,
+            };
+        }
+
+        // naked triplet
+        let result = self.find_naked_triplet();
+        if result.removals.will_remove_candidates() {
+            let nums_removed = result.removals.candidates_about_to_be_removed.len();
+            self.rating
+                .entry(Strategy::NakedTriplet)
+                .and_modify(|count| *count += nums_removed)
+                .or_insert(nums_removed);
+            return StrategyResult {
+                removals: result.removals,
+                strategy: Strategy::NakedTriplet,
             };
         }
 
