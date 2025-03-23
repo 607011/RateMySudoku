@@ -215,7 +215,6 @@ impl Sudoku {
                         }
                     }
                 }
-                log::info!("Hidden pair in {:?} / {:?}", digit_locations, digit_pairs);
                 result
                     .candidates_affected
                     .extend(digit_pairs.iter().flat_map(
