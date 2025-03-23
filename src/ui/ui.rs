@@ -257,7 +257,7 @@ impl SudokuApp {
                     let note_size = cell_size / 3.0;
 
                     for n in 1..=9 {
-                        if sudoku.get_notes(row, col).contains(&n) {
+                        if sudoku.get_candidates(row, col).contains(&n) {
                             let note_row = (n - 1) / 3;
                             let note_col = (n - 1) % 3;
 

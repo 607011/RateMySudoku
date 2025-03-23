@@ -605,7 +605,7 @@ impl Sudoku {
     }
 
     #[allow(dead_code)]
-    pub fn get_notes(&self, row: usize, col: usize) -> HashSet<u8> {
+    pub fn get_candidates(&self, row: usize, col: usize) -> HashSet<u8> {
         self.candidates[row][col].clone()
     }
 
