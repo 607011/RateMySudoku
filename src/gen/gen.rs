@@ -1,4 +1,5 @@
 use rate_my_sudoku::Sudoku;
+use std::io::Write;
 use std::sync::mpsc;
 use std::thread;
 
@@ -43,5 +44,6 @@ fn main() {
         } else {
             println!("FAILED {}", sudoku_string);
         }
+        std::io::stdout().flush().unwrap();
     }
 }
