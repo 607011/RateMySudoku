@@ -182,4 +182,73 @@ mod tests {
             num: 1
         }));
     }
+
+    #[test]
+    fn test_naked_triplet_col() {
+        let mut sudoku: Sudoku = Sudoku::from_string(
+            "000294380000178640480356100004837501000415700500629834953782416126543978040961253",
+        );
+        sudoku.calc_all_notes();
+        let result = sudoku.find_naked_triplet();
+        println!("{:?}", result);
+        assert_eq!(result.strategy, Strategy::NakedTriplet);
+        assert_eq!(result.removals.unit, Some(Unit::Column));
+        assert_eq!(result.removals.unit_index, Some(vec![1]));
+        let removals = result.removals.candidates_about_to_be_removed;
+        assert_eq!(removals.len(), 1);
+        assert!(removals.contains(&Candidate {
+            row: 0,
+            col: 1,
+            num: 6
+        }));
+        let candidates_affected = result.removals.candidates_affected;
+        assert_eq!(candidates_affected.len(), 7);
+        assert!(candidates_affected.contains(&Candidate {
+            row: 1,
+            col: 1,
+            num: 9
+        }));
+        assert!(candidates_affected.contains(&Candidate {
+            row: 1,
+            col: 1,
+            num: 3
+        }));
+        assert!(candidates_affected.contains(&Candidate {
+            row: 3,
+            col: 1,
+            num: 9
+        }));
+        assert!(candidates_affected.contains(&Candidate {
+            row: 3,
+            col: 1,
+            num: 6
+        }));
+        assert!(candidates_affected.contains(&Candidate {
+            row: 4,
+            col: 1,
+            num: 9
+        }));
+        assert!(candidates_affected.contains(&Candidate {
+            row: 4,
+            col: 1,
+            num: 6
+        }));
+        assert!(candidates_affected.contains(&Candidate {
+            row: 4,
+            col: 1,
+            num: 3
+        }));
+    }
+
+    #[test]
+    fn test_locked_pair() {
+        let mut sudoku: Sudoku = Sudoku::from_string(
+            "000300000070080501009000830300704000700000004000105008061000900907040060000002000",
+        );
+        sudoku.calc_all_notes();
+        let result = sudoku.find_pointing_pair_in_rows();
+        println!("{:?}", result);
+        assert_eq!(result.unit, Some(Unit::Column));
+        assert_eq!(result.unit_index, Some(vec![3]));
+    }
 }
