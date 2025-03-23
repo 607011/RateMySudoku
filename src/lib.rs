@@ -102,7 +102,7 @@ pub struct RemovalResult {
 }
 
 impl RemovalResult {
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         RemovalResult {
             sets_cell: None,
             cells_affected: Vec::new(),
@@ -112,10 +112,10 @@ impl RemovalResult {
             unit_index: None,
         }
     }
-    fn will_remove_candidates(&self) -> bool {
+    pub fn will_remove_candidates(&self) -> bool {
         !self.candidates_about_to_be_removed.is_empty()
     }
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.sets_cell = None;
         self.cells_affected.clear();
         self.candidates_affected.clear();
@@ -482,7 +482,7 @@ impl Sudoku {
     /// Check if there are last digits in any of the rows.
     /// If so, remove it from the notes in the row, column, and box where we've found it.
     /// Set the respective cell to the digit.
-    fn find_last_digit_in_rows(&self) -> RemovalResult {
+    pub fn find_last_digit_in_rows(&self) -> RemovalResult {
         for row in 0..9 {
             // Find the only empty cell in the row, if there's exactly one
             let empty_cells = (0..9)
@@ -506,7 +506,7 @@ impl Sudoku {
         RemovalResult::empty()
     }
 
-    fn find_last_digit_in_cols(&self) -> RemovalResult {
+    pub fn find_last_digit_in_cols(&self) -> RemovalResult {
         for col in 0..9 {
             let empty_cells = (0..9)
                 .filter(|&row| self.board[row][col] == EMPTY)
@@ -529,7 +529,7 @@ impl Sudoku {
         RemovalResult::empty()
     }
 
-    fn find_last_digit_in_boxes(&self) -> RemovalResult {
+    pub fn find_last_digit_in_boxes(&self) -> RemovalResult {
         for box_index in 0..9 {
             let start_row = 3 * (box_index / 3);
             let start_col = 3 * (box_index % 3);
@@ -617,7 +617,7 @@ impl Sudoku {
     /// even though that cell may have multiple candidates.
     ///
     /// Returns the number of notes removed as a result of placing new digits.
-    fn find_hidden_single(&self) -> StrategyResult {
+    pub fn find_hidden_single(&self) -> StrategyResult {
         let mut result = StrategyResult::new(Strategy::HiddenSingle);
         log::info!("Finding hidden singles in boxes");
         let box_result = self.find_hidden_single_box();
@@ -643,7 +643,7 @@ impl Sudoku {
         result
     }
 
-    fn find_hidden_single_row(&self) -> RemovalResult {
+    pub fn find_hidden_single_row(&self) -> RemovalResult {
         // Check for hidden singles in rows
         for row in 0..9 {
             for col in 0..9 {
@@ -670,7 +670,7 @@ impl Sudoku {
         RemovalResult::empty()
     }
 
-    fn find_hidden_single_col(&self) -> RemovalResult {
+    pub fn find_hidden_single_col(&self) -> RemovalResult {
         // Check for hidden singles in columns
         for col in 0..9 {
             for row in 0..9 {
@@ -697,7 +697,7 @@ impl Sudoku {
         RemovalResult::empty()
     }
 
-    fn find_hidden_single_box(&self) -> RemovalResult {
+    pub fn find_hidden_single_box(&self) -> RemovalResult {
         // Check for hidden singles in boxes
         for box_row in 0..3 {
             for box_col in 0..3 {
@@ -743,7 +743,7 @@ impl Sudoku {
         cells_with_num.len() == 2 && (cells_with_num[0] / 3 == cells_with_num[1] / 3)
     }
 
-    fn find_claiming_pair_in_rows(&self) -> RemovalResult {
+    pub fn find_claiming_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for row in 0..9 {
             for num in 1..=9 {
@@ -793,7 +793,7 @@ impl Sudoku {
         result
     }
 
-    fn find_claiming_pair_in_cols(&self) -> RemovalResult {
+    pub fn find_claiming_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for col in 0..9 {
             for num in 1..=9 {
@@ -859,7 +859,7 @@ impl Sudoku {
         }
     }
 
-    fn find_pointing_pair_in_rows(&self) -> RemovalResult {
+    pub fn find_pointing_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for box_row in (0..9).step_by(3) {
             for box_col in (0..9).step_by(3) {
@@ -903,7 +903,7 @@ impl Sudoku {
         result
     }
 
-    fn find_pointing_pair_in_cols(&self) -> RemovalResult {
+    pub fn find_pointing_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for box_row in (0..9).step_by(3) {
             for box_col in (0..9).step_by(3) {
@@ -964,7 +964,7 @@ impl Sudoku {
         }
     }
 
-    fn find_obvious_pair_in_rows(&self) -> RemovalResult {
+    pub fn find_obvious_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for obvious pairs in rows
         for row in 0..9 {
@@ -1013,7 +1013,7 @@ impl Sudoku {
         result
     }
 
-    fn find_obvious_pair_in_cols(&self) -> RemovalResult {
+    pub fn find_obvious_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for obvious pairs in columns
         for col in 0..9 {
@@ -1063,7 +1063,7 @@ impl Sudoku {
         result
     }
 
-    fn find_obvious_pair_in_boxes(&self) -> RemovalResult {
+    pub fn find_obvious_pair_in_boxes(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for obvious pairs in boxes
         for box_row in 0..3 {
@@ -1168,7 +1168,7 @@ impl Sudoku {
         }
     }
 
-    fn find_hidden_pair_in_rows(&self) -> RemovalResult {
+    pub fn find_hidden_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for hidden pairs in boxes
         for box_row in 0..3 {
@@ -1265,7 +1265,7 @@ impl Sudoku {
         result
     }
 
-    fn find_hidden_pair_in_cols(&self) -> RemovalResult {
+    pub fn find_hidden_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for hidden pairs in rows
         for row in 0..9 {
@@ -1352,7 +1352,7 @@ impl Sudoku {
         result
     }
 
-    fn find_hidden_pair_in_boxes(&self) -> RemovalResult {
+    pub fn find_hidden_pair_in_boxes(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for hidden pairs in columns
         for col in 0..9 {
@@ -1464,7 +1464,7 @@ impl Sudoku {
         }
     }
 
-    fn find_xwing_in_rows(&self) -> RemovalResult {
+    pub fn find_xwing_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for x-wings in rows
         for num in 1..=9 {
@@ -1546,7 +1546,7 @@ impl Sudoku {
         result
     }
 
-    fn find_xwing_in_cols(&self) -> RemovalResult {
+    pub fn find_xwing_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for x-wings in columns
         for num in 1..=9 {
