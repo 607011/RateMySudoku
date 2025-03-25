@@ -2,6 +2,44 @@ use crate::{EMPTY, Sudoku};
 use rand::seq::SliceRandom;
 
 impl Sudoku {
+    fn count_solutions(sudoku: &mut Sudoku, count: &mut usize, max_count: usize) -> bool {
+        if *count >= max_count {
+            return true; // Early return if we already found enough solutions
+        }
+        let mut found_empty = false;
+        let mut empty_row = 0;
+        let mut empty_col = 0;
+        'find_empty: for row in 0..9 {
+            for col in 0..9 {
+                if sudoku.board[row][col] == EMPTY {
+                    empty_row = row;
+                    empty_col = col;
+                    found_empty = true;
+                    break 'find_empty;
+                }
+            }
+        }
+        // If no empty cell is found, we have a solution
+        if !found_empty {
+            *count += 1;
+            return *count >= max_count;
+        }
+        // Try each possible value
+        for num in 1..=9 {
+            if !sudoku.can_place(empty_row, empty_col, num) {
+                continue;
+            }
+            // Place and recurse
+            sudoku.board[empty_row][empty_col] = num;
+            if Self::count_solutions(sudoku, count, max_count) {
+                return true;
+            }
+            // Backtrack
+            sudoku.board[empty_row][empty_col] = EMPTY;
+        }
+        false
+    }
+
     /// Generates a new Sudoku puzzle with a given number of filled cells.
     /// The puzzle is guaranteed to have a unique solution.
     pub fn generate(filled_cells: usize) -> Option<Self> {
@@ -31,47 +69,8 @@ impl Sudoku {
             // Check if the puzzle still has a unique solution
             let mut test_sudoku = sudoku.clone();
 
-            // Count solutions using backtracking (up to 2)
-            fn count_solutions(sudoku: &mut Sudoku, count: &mut usize, max_count: usize) -> bool {
-                if *count >= max_count {
-                    return true; // Early return if we already found enough solutions
-                }
-                let mut found_empty = false;
-                let mut empty_row = 0;
-                let mut empty_col = 0;
-                'find_empty: for r in 0..9 {
-                    for c in 0..9 {
-                        if sudoku.board[r][c] == EMPTY {
-                            empty_row = r;
-                            empty_col = c;
-                            found_empty = true;
-                            break 'find_empty;
-                        }
-                    }
-                }
-                // If no empty cell is found, we have a solution
-                if !found_empty {
-                    *count += 1;
-                    return *count >= max_count;
-                }
-                // Try each possible value
-                for num in 1..=9 {
-                    if !sudoku.can_place(empty_row, empty_col, num) {
-                        continue;
-                    }
-                    // Place and recurse
-                    sudoku.board[empty_row][empty_col] = num;
-                    if count_solutions(sudoku, count, max_count) {
-                        return true;
-                    }
-                    // Backtrack
-                    sudoku.board[empty_row][empty_col] = EMPTY;
-                }
-                false
-            }
-
             let mut solution_count = 0;
-            count_solutions(&mut test_sudoku, &mut solution_count, 2);
+            Self::count_solutions(&mut test_sudoku, &mut solution_count, 2);
 
             if solution_count != 1 {
                 return None;
