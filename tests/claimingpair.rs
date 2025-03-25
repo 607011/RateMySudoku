@@ -7,7 +7,7 @@ mod tests {
             "318005406000603810006080503864952137123476958795318264030500780000007305000039641",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_claiming_pair();
         assert_eq!(result.strategy, Strategy::ClaimingPair);
         assert_eq!(result.removals.candidates_about_to_be_removed.len(), 1);
@@ -41,7 +41,7 @@ mod tests {
             "762008001980000006150000087478003169526009873319800425835001692297685314641932758",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_claiming_pair();
         assert_eq!(result.strategy, Strategy::ClaimingPair);
         assert_eq!(result.removals.candidates_about_to_be_removed.len(), 6);

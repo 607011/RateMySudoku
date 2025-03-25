@@ -5,7 +5,6 @@ use rate_my_sudoku::{EMPTY, Resolution, Strategy, StrategyResult, Sudoku, Sudoku
 use eframe::Storage;
 use eframe::egui;
 use egui::{Color32, Event, FontId, Pos2, Rect, Stroke, Vec2};
-
 use serde::{Deserialize, Serialize};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -330,6 +329,118 @@ impl SudokuApp {
 
 impl eframe::App for SudokuApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Load").clicked()
+                        || ctx.input(|i| i.key_pressed(egui::Key::O) && i.modifiers.ctrl)
+                    {
+                        if let Some(path) = rfd::FileDialog::new().pick_file() {
+                            if path.extension().is_some_and(|ext| ext == "bin") {
+                                match std::fs::read(&path) {
+                                    Ok(content) => match Sudoku::from_binary(&content) {
+                                        Ok(sudoku) => {
+                                            self.sudoku = sudoku;
+                                            self.settings.sudoku_string =
+                                                self.sudoku.to_board_string();
+                                            self.state = State::CalculateNotes;
+                                            self.strategy_result.clear();
+                                        }
+                                        Err(err) => {
+                                            log::error!("Failed to parse binary: {}", err)
+                                        }
+                                    },
+                                    Err(err) => log::error!("Failed to load file: {}", err),
+                                }
+                            } else if path.extension().is_some_and(|ext| ext == "zst") {
+                                match std::fs::read(&path) {
+                                    Ok(content) => match Sudoku::from_zstd(&content) {
+                                        Ok(sudoku) => {
+                                            self.sudoku = sudoku;
+                                            self.settings.sudoku_string =
+                                                self.sudoku.to_board_string();
+                                            self.state = State::CalculateNotes;
+                                            self.strategy_result.clear();
+                                        }
+                                        Err(err) => {
+                                            log::error!("Failed to parse binary: {}", err)
+                                        }
+                                    },
+                                    Err(err) => log::error!("Failed to load file: {}", err),
+                                }
+                            } else {
+                                match std::fs::read_to_string(&path) {
+                                    Ok(content) => {
+                                        if path.extension().is_some_and(|ext| ext == "json") {
+                                            match Sudoku::from_json(&content) {
+                                                Ok(sudoku) => {
+                                                    self.sudoku = sudoku;
+                                                    self.settings.sudoku_string =
+                                                        self.sudoku.to_board_string();
+                                                    self.state = State::CalculateNotes;
+                                                    self.strategy_result.clear();
+                                                }
+                                                Err(err) => {
+                                                    log::error!("Failed to parse JSON: {}", err)
+                                                }
+                                            }
+                                        } else if let Ok(board_string) =
+                                            self.sudoku.set_board_string(&content)
+                                        {
+                                            self.settings.sudoku_string = board_string.clone();
+                                            self.state = State::CalculateNotes;
+                                            self.strategy_result.clear();
+                                        } else {
+                                            log::error!("Invalid Sudoku board in file");
+                                        }
+                                    }
+                                    Err(err) => log::error!("Failed to load file: {}", err),
+                                }
+                            }
+                        }
+                        ui.close_menu();
+                    }
+                    if ui.button("Save as ...").clicked()
+                        || ctx.input(|i| {
+                            i.key_pressed(egui::Key::S) && i.modifiers.ctrl && i.modifiers.shift
+                        })
+                    {
+                        if let Some(path) = rfd::FileDialog::new().save_file() {
+                            let content: Vec<u8> =
+                                if path.extension().is_some_and(|ext| ext == "json") {
+                                    let mut sudoku = self.sudoku.clone();
+                                    if !sudoku.has_candidates() {
+                                        sudoku.calc_candidates();
+                                    }
+                                    sudoku.to_json().into()
+                                } else if path.extension().is_some_and(|ext| ext == "bin") {
+                                    let mut sudoku = self.sudoku.clone();
+                                    if !sudoku.has_candidates() {
+                                        sudoku.calc_candidates();
+                                    }
+                                    sudoku.to_binary()
+                                } else if path.extension().is_some_and(|ext| ext == "zst") {
+                                    let mut sudoku = self.sudoku.clone();
+                                    if !sudoku.has_candidates() {
+                                        sudoku.calc_candidates();
+                                    }
+                                    sudoku.to_zstd()
+                                } else {
+                                    self.sudoku.to_board_string().into()
+                                };
+                            if let Err(err) = std::fs::write(&path, content) {
+                                log::error!("Failed to save file: {}", err);
+                            } else {
+                                log::info!("Saved file to {}", path.display());
+                            }
+                        }
+                        ui.close_menu();
+                    }
+                });
+            });
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             if ctx.input(|i| {
                 i.events.iter().any(|e| match e {
@@ -393,7 +504,7 @@ impl eframe::App for SudokuApp {
                         ctx.request_repaint();
                     }
                     if ui.button("Copy to clipboard").clicked() {
-                        self.handle_clipboard_copy(&self.sudoku.serialized(), ctx);
+                        self.handle_clipboard_copy(&self.sudoku.to_board_string(), ctx);
                     }
                     // Status information display
                     let status_text = if self.strategy_result.strategy != Strategy::None {
@@ -441,14 +552,14 @@ impl SudokuApp {
             log::info!("Loaded sudoku from storage: {}", settings.sudoku_string);
             self.sudoku.set_board_string(&settings.sudoku_string)?;
         }
-        self.settings.sudoku_string = self.sudoku.serialized();
+        self.settings.sudoku_string = self.sudoku.to_board_string();
         Ok(self.settings.sudoku_string.clone())
     }
 
     fn proceed(&mut self) {
         match self.state {
             State::CalculateNotes => {
-                self.sudoku.calc_all_notes();
+                self.sudoku.calc_candidates();
                 self.state = State::TryingStrategy;
             }
             State::TryingStrategy => {
@@ -480,7 +591,7 @@ impl SudokuApp {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
         .format_timestamp(None)
         .format_target(false)
         .init();

@@ -6,7 +6,7 @@
 
 ## GUI written with egui/eframe
 
-<img width="791" alt="Sudukui" src="https://github.com/user-attachments/assets/b32a10c4-d053-4900-babb-f93a4891a828" />
+<img width="791" alt="Sudokui" src="https://github.com/user-attachments/assets/b32a10c4-d053-4900-babb-f93a4891a828" />
 
 ## Strategies
 
@@ -22,15 +22,15 @@ The following strategies are currently (about to be) implemented:
 |:----:|:----:|:--:| ---------------------- | ------:|
 | ☒    | ☒    | ☒  | Last Digit             |      4 |
 | ☒    | ☒    | ☒  | Obvious Single         |      5 |
-| ☒    | ☐    | ☐  | Hidden Single          |     14 |
-| ☐    | ☐    | ☐  | Locked Pair            |     40 |
+| ☒    | ☒    | ☒  | Hidden Single          |     14 |
+| ☒    | ☒    | ☒  | Locked Pair            |     40 |
 | ☒    | ☒    | ☒  | Pointing Pair          |     50 |
 | ☒    | ☒    | ☒  | Claiming Pair          |     50 |
-| ☒    | ☐    | ☐  | Obvious Pair           |     60 |
-| ☒    | ☐    | ☐  | Hidden Pair            |     70 |
+| ☒    | ☒    | ☒  | Obvious Pair           |     60 |
+| ☒    | ☒    | ☒  | Hidden Pair            |     70 |
 | ☒    | ☒    | ☒  | Naked Triplet          |     80 |
-| ☒    | ☒    | ☐  | Skyscraper             |    130 |
-| ☒    | ☒    | ☐  | X-Wing                 |    140 |
+| ☐    | ☐    | ☐  | Skyscraper             |    130 |
+| ☒    | ☒    | ☒  | X-Wing                 |    140 |
 
 More to come …
 

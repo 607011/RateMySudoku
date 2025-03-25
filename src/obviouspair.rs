@@ -6,7 +6,7 @@ impl Sudoku {
         // Check for obvious pairs in rows
         for row in 0..9 {
             for col in 0..9 {
-                if self.candidates[row][col].len() != 2 {
+                if self.candidates[row][col].is_empty() || self.candidates[row][col].len() != 2 {
                     continue;
                 }
 
@@ -64,7 +64,7 @@ impl Sudoku {
 
                 // Find pair in same column
                 for i in (row + 1)..9 {
-                    if self.candidates[i][col] != pair {
+                    if self.candidates[i][col].is_empty() || self.candidates[i][col] != pair {
                         continue;
                     }
                     // Found a pair, mark these candidates from other cells

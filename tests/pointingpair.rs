@@ -7,7 +7,7 @@ mod tests {
             "984000000002500040001904002006097230003602000209035610195768423427351896638009751",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_pointing_pair_in_rows();
         println!("{:?}", result);
         assert_eq!(result.unit, Some(Unit::Row));
@@ -40,7 +40,7 @@ mod tests {
             "340006070080000930002030060000010000097364850000002000000000000000608090000923785",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_pointing_pair_in_rows();
         println!("{:?}", result);
         assert_eq!(result.unit_index, Some(vec![6]));
@@ -97,7 +97,7 @@ mod tests {
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_pointing_pair_in_cols();
         println!("{:?}", result);
         assert_eq!(result.unit, Some(Unit::Column));

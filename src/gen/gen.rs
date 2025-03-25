@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         thread::spawn(move || {
             loop {
                 if let Some(sudoku) = Sudoku::generate(filled_cells) {
-                    let sudoku_string = sudoku.serialized();
+                    let sudoku_string = sudoku.to_board_string();
                     let mut sudoku = sudoku;
                     if sudoku.solve_human_like() {
                         tx.send((sudoku.difficulty(), sudoku_string)).unwrap();
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if difficulty > 0.0 {
             println!("{:6.2} {}", difficulty, sudoku_string);
         } else {
-            println!("FAILED {}", sudoku_string);
+            println!("     ? {}", sudoku_string);
         }
         std::io::stdout().flush().unwrap();
     }

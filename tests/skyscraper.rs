@@ -1,26 +1,27 @@
-#[cfg(test)]
 mod tests {
     use rate_my_sudoku::Sudoku;
 
     #[test]
-    fn test_locked_pair_row() {
+    fn test_skyscraper_row() {
         let mut sudoku: Sudoku = Sudoku::from_string(
-            "050134600090652138030879040215003006080261350360085921040027013073006000020308760",
+            "1678925349524.386.8345..9..7.3.48.....835......5.2.3.8..1..5.89.869.14..579284613",
         )
         .expect("Failed to create Sudoku from string");
         sudoku.calc_candidates();
-        let result = sudoku.find_locked_pair_in_rows();
+        let result = sudoku.find_skyscraper_rows();
         println!("{:?}", result);
+        assert!(result.sets_cell.is_none());
     }
 
     #[test]
-    fn test_locked_pair_col() {
+    fn test_skyscraper_col() {
         let mut sudoku: Sudoku = Sudoku::from_string(
-            "027094001009200000000060279900000520000000000015000008863420000092681400401900682",
+            "1678925349524.386.8345..9..7.3.48.....835......5.2.3.8..1..5.89.869.14..579284613",
         )
         .expect("Failed to create Sudoku from string");
         sudoku.calc_candidates();
-        let result = sudoku.find_locked_pair_in_cols();
+        let result = sudoku.find_skyscraper_cols();
         println!("{:?}", result);
+        assert!(result.sets_cell.is_none());
     }
 }

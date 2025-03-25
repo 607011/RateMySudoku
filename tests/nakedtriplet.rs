@@ -7,7 +7,7 @@ mod tests {
             "000294380000178640480356100004837501000415700500629834953782416126543978040961253",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_naked_triplet();
         println!("{:?}", result);
         assert_eq!(result.strategy, Strategy::NakedTriplet);
@@ -65,7 +65,7 @@ mod tests {
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_naked_triplet_in_rows();
         println!("{:?}", result);
         assert_eq!(result.unit, Some(Unit::Row));
@@ -132,7 +132,7 @@ mod tests {
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_naked_triplet_in_cols();
         println!("{:?}", result);
         assert_eq!(result.unit, Some(Unit::Column));
@@ -234,7 +234,7 @@ mod tests {
             "...2..67992..6.1..476891253..7..95.6.......12..51..9.77.261..9.3...82761....7..2.",
         )
         .expect("Failed to create Sudoku from string");
-        sudoku.calc_all_notes();
+        sudoku.calc_candidates();
         let result = sudoku.find_naked_triplet_in_boxes();
         println!("{:?}", result);
         assert_eq!(result.unit, Some(Unit::Box));

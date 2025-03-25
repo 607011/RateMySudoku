@@ -1,3 +1,4 @@
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::LazyLock;
@@ -32,7 +33,7 @@ impl fmt::Display for Unit {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Strategy {
     None,
     LastDigit,
@@ -49,6 +50,7 @@ pub enum Strategy {
 }
 
 impl Strategy {
+    #[allow(clippy::wrong_self_convention)]
     fn to_string(&self) -> &str {
         match self {
             Strategy::None => "None",
@@ -89,6 +91,26 @@ impl fmt::Display for Strategy {
         write!(f, "{}", self.to_string())
     }
 }
+
+type StrategyApplicator = Vec<(Strategy, fn(&Sudoku) -> StrategyResult)>;
+static STRATEGY_FUNCTIONS: LazyLock<StrategyApplicator> = LazyLock::new(|| {
+    let mut strategies: StrategyApplicator = vec![
+        (Strategy::LastDigit, Sudoku::find_last_digit),
+        (Strategy::ObviousSingle, Sudoku::find_obvious_single),
+        (Strategy::HiddenSingle, Sudoku::find_hidden_single),
+        (Strategy::LockedPair, Sudoku::find_locked_pair),
+        (Strategy::PointingPair, Sudoku::find_pointing_pair),
+        (Strategy::ClaimingPair, Sudoku::find_claiming_pair),
+        (Strategy::ObviousPair, Sudoku::find_obvious_pair),
+        (Strategy::HiddenPair, Sudoku::find_hidden_pair),
+        (Strategy::NakedTriplet, Sudoku::find_naked_triplet),
+        (Strategy::Skyscraper, Sudoku::find_skyscraper),
+        (Strategy::XWing, Sudoku::find_xwing),
+    ];
+    // Sort strategies by difficulty to pre-empt developers from adding strategies in the wrong order
+    strategies.sort_by_key(|(strategy, _)| strategy.difficulty());
+    strategies
+});
 pub const EMPTY: u8 = 0;
 pub static ALL_DIGITS: LazyLock<HashSet<u8>> = LazyLock::new(|| (1..=9).collect());
 
@@ -140,7 +162,6 @@ impl RemovalResult {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct StrategyResult {
     pub strategy: Strategy,
@@ -173,13 +194,11 @@ pub struct Resolution {
 }
 
 impl Resolution {
-    #[allow(dead_code)]
     pub fn nums_removed(&self) -> usize {
         self.nums_removed
     }
-    #[allow(dead_code)]
     pub fn strategy(&self) -> Strategy {
-        self.strategy.clone()
+        self.strategy
     }
 }
 
@@ -344,7 +363,6 @@ impl Sudoku {
         !self.unsolved()
     }
 
-    #[allow(dead_code)]
     pub fn rating(&self) -> HashMap<Strategy, usize> {
         self.rating.clone()
     }
@@ -359,12 +377,245 @@ impl Sudoku {
         (total_rating as f64) / (candidates_removed as f64)
     }
 
-    pub fn serialized(&self) -> String {
+    pub fn from_zstd(binary: &[u8]) -> Result<Self, SudokuError> {
+        let mut decoder = zstd::stream::Decoder::new(binary).unwrap();
+        let mut decompressed_data = Vec::new();
+        std::io::copy(&mut decoder, &mut decompressed_data).unwrap();
+        Sudoku::from_binary(&decompressed_data)
+    }
+
+    pub fn to_zstd(&self) -> Vec<u8> {
+        let mut compressed_data = Vec::new();
+        let mut encoder = zstd::stream::Encoder::new(&mut compressed_data, 21).unwrap();
+        std::io::Write::write_all(&mut encoder, &self.to_binary()).unwrap();
+        encoder.finish().unwrap();
+        compressed_data
+    }
+
+    pub fn to_binary(&self) -> Vec<u8> {
+        let mut binary_representation = Vec::new();
+        // Convert the board to binary representation using low and high nibbles
+        for row in self.board.iter() {
+            for chunk in row.chunks(2) {
+                let byte = ((chunk[0] & 0xF) << 4) | (chunk.get(1).unwrap_or(&0) & 0xF);
+                binary_representation.push(byte);
+            }
+        }
+
+        // Convert the candidates to binary representation using low and high nibbles
+        for row in self.candidates.iter() {
+            for candidates in row.iter() {
+                for digit in (1..=9).step_by(2) {
+                    let high_nibble = if candidates.contains(&digit) {
+                        digit
+                    } else {
+                        0
+                    };
+                    let low_nibble = if candidates.contains(&(digit + 1)) {
+                        digit + 1
+                    } else {
+                        0
+                    };
+                    binary_representation.push((high_nibble << 4) | low_nibble);
+                }
+            }
+        }
+        binary_representation
+    }
+
+    /// Deserialize the Sudoku board from a binary representation.
+    /// The binary representation is a sequence of bytes where each byte
+    /// contains two cells or candidates.
+    pub fn from_binary(binary: &[u8]) -> Result<Sudoku, SudokuError> {
+        if binary.len() != 450 {
+            return Err(SudokuError {
+                message: "Invalid binary data: must contain exactly 450 bytes".to_string(),
+            });
+        }
+        // First come 45 bytes for the board
+        let mut sudoku = Sudoku::new();
+        let mut board = [[0u8; 9]; 9];
+        let mut idx = 0;
+        for row in &mut board {
+            for col in (0..9).step_by(2) {
+                let byte = binary[idx];
+                row[col] = (byte >> 4) & 0xF; // High nibble
+                if col + 1 < 9 {
+                    row[col + 1] = byte & 0xF; // Low nibble
+                }
+                idx += 1;
+            }
+        }
+        sudoku.board = board;
+        // Then come 405 bytes for the candidates
+        let mut notes = std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new()));
+        for row in &mut notes {
+            for cell_notes in row.iter_mut() {
+                let mut candidates = HashSet::new();
+                for _ in (0..9).step_by(2) {
+                    let byte = binary[idx];
+                    let high_nibble = (byte >> 4) & 0xF;
+                    let low_nibble = byte & 0xF;
+                    if high_nibble != 0 {
+                        candidates.insert(high_nibble);
+                    }
+                    if low_nibble != 0 {
+                        candidates.insert(low_nibble);
+                    }
+                    idx += 1;
+                }
+                *cell_notes = candidates;
+            }
+        }
+        sudoku.candidates = notes;
+        Ok(sudoku)
+    }
+
+    pub fn to_board_string(&self) -> String {
         self.board
             .iter()
             .flatten()
             .map(|&digit| (digit + b'0') as char)
             .collect()
+    }
+
+    pub fn set_board_string(&mut self, board_string: &str) -> Result<String, SudokuError> {
+        let board_string = if board_string.contains(' ') || board_string.contains('\n') {
+            // Handle formatted board with spaces and newlines
+            board_string
+                .chars()
+                .filter_map(|c| {
+                    if c.is_ascii_digit() {
+                        Some(c)
+                    } else if c == '.' || c == '_' {
+                        Some('0')
+                    } else {
+                        None
+                    }
+                })
+                .collect::<String>()
+        } else {
+            // Handle compact board string
+            board_string.replace(['.', '_'], "0")
+        };
+        if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
+            return Err(SudokuError {
+                message:
+                    "Invalid Sudoku board: board string must contain exactly 81 digits or dots"
+                        .to_string(),
+            });
+        }
+        self.clear();
+        let digits = board_string
+            .chars()
+            .filter_map(|c| c.to_digit(10).map(|d| d as u8))
+            .take(81);
+        self.original_board = [[EMPTY; 9]; 9];
+        for (idx, digit) in digits.enumerate() {
+            let row = idx / 9;
+            let col = idx % 9;
+            self.board[row][col] = digit;
+            self.original_board[row][col] = digit;
+        }
+        Ok(board_string)
+    }
+
+    /// Serialize the Sudoku board including all cells' candidates to a string
+    pub fn to_json(&self) -> String {
+        let mut json = String::from("{\"board\":[");
+        for (i, row) in self.board.iter().enumerate() {
+            json.push('[');
+            for (j, &cell) in row.iter().enumerate() {
+                json.push_str(&cell.to_string());
+                if j < 8 {
+                    json.push(',');
+                }
+            }
+            json.push(']');
+            if i < 8 {
+                json.push(',');
+            }
+        }
+        json.push_str("],\"candidates\":[");
+        for (i, row) in self.candidates.iter().enumerate() {
+            json.push('[');
+            for (j, candidates) in row.iter().enumerate() {
+                json.push('[');
+                for (k, candidate) in candidates.iter().enumerate() {
+                    json.push_str(&format!("{}", candidate));
+                    if k < candidates.len() - 1 {
+                        json.push(',');
+                    }
+                }
+                json.push(']');
+                if j < 8 {
+                    json.push(',');
+                }
+            }
+            json.push(']');
+            if i < 8 {
+                json.push(',');
+            }
+        }
+        json.push_str("]}");
+        json
+    }
+
+    pub fn from_json(json: &str) -> Result<Self, SudokuError> {
+        let parsed: Value = serde_json::from_str(json).map_err(|e| SudokuError {
+            message: format!("Failed to parse JSON: {}", e),
+        })?;
+        let mut sudoku = Sudoku::new();
+        if let Some(board) = parsed.get("board").and_then(|b| b.as_array()) {
+            for (i, row) in board.iter().enumerate() {
+                if let Some(row_array) = row.as_array() {
+                    for (j, cell) in row_array.iter().enumerate() {
+                        if let Some(num) = cell.as_u64() {
+                            sudoku.board[i][j] = num as u8;
+                        } else {
+                            return Err(SudokuError {
+                                message: "Invalid board data in JSON".to_string(),
+                            });
+                        }
+                    }
+                } else {
+                    return Err(SudokuError {
+                        message: "Invalid board data in JSON".to_string(),
+                    });
+                }
+            }
+        } else {
+            return Err(SudokuError {
+                message: "Missing or invalid 'board' field in JSON".to_string(),
+            });
+        }
+        if let Some(candidates) = parsed.get("candidates").and_then(|c| c.as_array()) {
+            for (i, row) in candidates.iter().enumerate() {
+                if let Some(row_array) = row.as_array() {
+                    for (j, cell_candidates) in row_array.iter().enumerate() {
+                        if let Some(candidate_array) = cell_candidates.as_array() {
+                            sudoku.candidates[i][j] = candidate_array
+                                .iter()
+                                .filter_map(|c| c.as_u64().map(|n| n as u8))
+                                .collect();
+                        } else {
+                            return Err(SudokuError {
+                                message: "Invalid candidates data in JSON".to_string(),
+                            });
+                        }
+                    }
+                } else {
+                    return Err(SudokuError {
+                        message: "Invalid candidates data in JSON".to_string(),
+                    });
+                }
+            }
+        } else {
+            return Err(SudokuError {
+                message: "Missing or invalid 'candidates' field in JSON".to_string(),
+            });
+        }
+        Ok(sudoku)
     }
 
     /// print the board
@@ -376,7 +627,7 @@ impl Sudoku {
             }
             println!();
         }
-        println!("{}", self.serialized());
+        println!("{}", self);
     }
 
     fn calc_nums_in_row(&self, row: usize) -> HashSet<u8> {
@@ -413,7 +664,14 @@ impl Sudoku {
         nums
     }
 
-    pub fn calc_all_notes(&mut self) {
+    pub fn has_candidates(&self) -> bool {
+        self.candidates
+            .iter()
+            .flatten()
+            .any(|cell| !cell.is_empty())
+    }
+
+    pub fn calc_candidates(&mut self) {
         // First calculate all the "used numbers" sets
         let mut nums_in_row: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
         let mut nums_in_col: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
@@ -621,7 +879,6 @@ impl Sudoku {
         self.board[row][col]
     }
 
-    #[allow(dead_code)]
     pub fn get_candidates(&self, row: usize, col: usize) -> HashSet<u8> {
         self.candidates[row][col].clone()
     }
@@ -663,7 +920,7 @@ impl Sudoku {
                 .removals
                 .candidates_about_to_be_removed
                 .len(),
-            strategy: strategy_result.strategy.clone(),
+            strategy: strategy_result.strategy,
         };
         for note in &strategy_result.removals.candidates_about_to_be_removed {
             assert!(self.candidates[note.row][note.col].contains(&note.num));
@@ -673,7 +930,7 @@ impl Sudoku {
             self.board[cell.row][cell.col] = cell.num;
             // Update rating for this strategy
             self.rating
-                .entry(strategy_result.strategy.clone())
+                .entry(strategy_result.strategy)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
@@ -692,168 +949,45 @@ impl Sudoku {
 
     /// Find the next step to solve the Sudoku puzzle.
     pub fn next_step(&mut self) -> StrategyResult {
-        // last digit
-        let result = self.find_last_digit();
-        if result.removals.will_remove_candidates() {
+        for (strategy, strategy_fn) in STRATEGY_FUNCTIONS.iter() {
+            let result = (strategy_fn)(self);
+            if !result.removals.will_remove_candidates() {
+                continue;
+            }
             let nums_removed = result.removals.candidates_about_to_be_removed.len();
             self.rating
-                .entry(Strategy::LastDigit)
+                .entry(*strategy)
                 .and_modify(|count| *count += nums_removed)
                 .or_insert(nums_removed);
             return StrategyResult {
                 removals: result.removals,
-                strategy: Strategy::LastDigit,
+                strategy: *strategy,
             };
         }
-
-        // obvious single
-        let result = self.find_obvious_single();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::ObviousSingle)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::ObviousSingle,
-            };
-        }
-
-        // hidden single
-        let result = self.find_hidden_single();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::HiddenSingle)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::HiddenSingle,
-            };
-        }
-
-        // locked pair
-        let result = self.find_locked_pair();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::LockedPair)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::LockedPair,
-            };
-        }
-
-        // pointing pair
-        let result = self.find_pointing_pair();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::PointingPair)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::PointingPair,
-            };
-        }
-
-        // claiming pair
-        let result = self.find_claiming_pair();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::ClaimingPair)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::ClaimingPair,
-            };
-        }
-
-        // obvious pair
-        let result = self.find_obvious_pair();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::ObviousPair)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::ObviousPair,
-            };
-        }
-
-        // hidden pair
-        let result = self.find_hidden_pair();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::HiddenPair)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::HiddenPair,
-            };
-        }
-
-        // naked triplet
-        let result = self.find_naked_triplet();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::NakedTriplet)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::NakedTriplet,
-            };
-        }
-
-        // skyscraper
-        let result = self.find_skyscraper();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::Skyscraper)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::Skyscraper,
-            };
-        }
-
-        // x-wing
-        let result = self.find_xwing();
-        if result.removals.will_remove_candidates() {
-            let nums_removed = result.removals.candidates_about_to_be_removed.len();
-            self.rating
-                .entry(Strategy::XWing)
-                .and_modify(|count| *count += nums_removed)
-                .or_insert(nums_removed);
-            return StrategyResult {
-                removals: result.removals,
-                strategy: Strategy::XWing,
-            };
-        }
-
         StrategyResult::empty()
+    }
+
+    /// Build a list of all possible techniques to solve the Sudoku puzzle at the current state.
+    pub fn all_possible_strategies(&self) -> Vec<StrategyResult> {
+        let mut strategies = Vec::new();
+        for (strategy, strategy_fn) in STRATEGY_FUNCTIONS.iter() {
+            let result = (strategy_fn)(self);
+            if !result.removals.will_remove_candidates() {
+                continue;
+            }
+            strategies.push(StrategyResult {
+                removals: result.removals,
+                strategy: *strategy,
+            });
+        }
+        strategies
     }
 
     /// Solve the Sudoku puzzle using human-like strategies
     #[cfg(feature = "dump")]
     fn solve_like_a_human(&mut self) -> bool {
         // The first step always is to calculate the notes
-        self.calc_all_notes();
+        self.calc_candidates();
         // Since we're starting from scratch, we clear the rating
         self.rating.clear();
         while self.unsolved() {
@@ -871,7 +1005,7 @@ impl Sudoku {
 
     pub fn solve_human_like(&mut self) -> bool {
         // The first step always is to calculate the notes
-        self.calc_all_notes();
+        self.calc_candidates();
         // Since we're starting from scratch, we clear the rating
         self.rating.clear();
         while self.unsolved() {
@@ -901,46 +1035,5 @@ impl Sudoku {
 
     pub fn restore(&mut self) {
         let _ = self.set_board_string(&self.original_board());
-    }
-
-    pub fn set_board_string(&mut self, board_string: &str) -> Result<String, SudokuError> {
-        let board_string = if board_string.contains(' ') || board_string.contains('\n') {
-            // Handle formatted board with spaces and newlines
-            board_string
-                .chars()
-                .filter_map(|c| {
-                    if c.is_ascii_digit() {
-                        Some(c)
-                    } else if c == '.' || c == '_' {
-                        Some('0')
-                    } else {
-                        None
-                    }
-                })
-                .collect::<String>()
-        } else {
-            // Handle compact board string
-            board_string.replace(['.', '_'], "0")
-        };
-        if board_string.chars().filter(|c| c.is_ascii_digit()).count() != 81 {
-            return Err(SudokuError {
-                message:
-                    "Invalid Sudoku board: board string must contain exactly 81 digits or dots"
-                        .to_string(),
-            });
-        }
-        self.clear();
-        let digits = board_string
-            .chars()
-            .filter_map(|c| c.to_digit(10).map(|d| d as u8))
-            .take(81);
-        self.original_board = [[EMPTY; 9]; 9];
-        for (idx, digit) in digits.enumerate() {
-            let row = idx / 9;
-            let col = idx % 9;
-            self.board[row][col] = digit;
-            self.original_board[row][col] = digit;
-        }
-        Ok(board_string)
     }
 }

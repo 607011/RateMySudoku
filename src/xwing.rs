@@ -30,33 +30,6 @@ impl Sudoku {
                     if cols2.len() != 2 || cols1 != cols2 {
                         continue;
                     }
-                    log::info!(
-                        "Found x-wing {:?} in rows {} and {} at columns {:?}",
-                        num,
-                        row1,
-                        row2,
-                        cols1
-                    );
-                    result.candidates_affected.push(Candidate {
-                        row: row1,
-                        col: cols1[0],
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: row1,
-                        col: cols1[1],
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: row2,
-                        col: cols2[0],
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: row2,
-                        col: cols2[1],
-                        num,
-                    });
                     // Remove the candidate from other cells in the same columns
                     for row in 0..9 {
                         if row == row1 || row == row2 {
@@ -73,8 +46,35 @@ impl Sudoku {
                         }
                     }
                     if result.will_remove_candidates() {
+                        log::info!(
+                            "Found X-Wing: num {:?} in *rows* {} and {} at columns {:?}",
+                            num,
+                            row1,
+                            row2,
+                            cols1
+                        );
+                        result.candidates_affected.push(Candidate {
+                            row: row1,
+                            col: cols1[0],
+                            num,
+                        });
+                        result.candidates_affected.push(Candidate {
+                            row: row1,
+                            col: cols1[1],
+                            num,
+                        });
+                        result.candidates_affected.push(Candidate {
+                            row: row2,
+                            col: cols2[0],
+                            num,
+                        });
+                        result.candidates_affected.push(Candidate {
+                            row: row2,
+                            col: cols2[1],
+                            num,
+                        });
                         result.unit = Some(Unit::Row);
-                        result.unit_index = Some(vec![row1]);
+                        result.unit_index = Some(vec![row1, row2]);
                         return result;
                     }
                 }
@@ -100,6 +100,7 @@ impl Sudoku {
                 if rows1.len() != 2 {
                     continue;
                 }
+                rows1.sort_unstable();
                 // Find another column with the same rows
                 for col2 in (col1 + 1)..9 {
                     let mut rows2 = Vec::new();
@@ -110,36 +111,10 @@ impl Sudoku {
                         }
                     }
                     // If we found another column with the same rows, we have an X-Wing
+                    rows2.sort_unstable();
                     if rows2.len() != 2 || rows1 != rows2 {
                         continue;
                     }
-                    log::info!(
-                        "Found X-Wing {:?} in columns {} and {} at rows {:?}",
-                        num,
-                        col1,
-                        col2,
-                        rows1
-                    );
-                    result.candidates_affected.push(Candidate {
-                        row: rows1[0],
-                        col: col1,
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: rows1[1],
-                        col: col1,
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: rows2[0],
-                        col: col2,
-                        num,
-                    });
-                    result.candidates_affected.push(Candidate {
-                        row: rows2[1],
-                        col: col2,
-                        num,
-                    });
                     // Mark removable candidates from other cells in the same rows
                     for &row in &rows1 {
                         for col in 0..9 {
@@ -156,8 +131,35 @@ impl Sudoku {
                         }
                     }
                     if result.will_remove_candidates() {
+                        log::info!(
+                            "Found X-Wing: num {:?} in *columns* {} and {} at rows {:?}",
+                            num,
+                            col1,
+                            col2,
+                            rows1
+                        );
+                        result.candidates_affected.push(Candidate {
+                            row: rows1[0],
+                            col: col1,
+                            num,
+                        });
+                        result.candidates_affected.push(Candidate {
+                            row: rows1[1],
+                            col: col1,
+                            num,
+                        });
+                        result.candidates_affected.push(Candidate {
+                            row: rows1[0],
+                            col: col2,
+                            num,
+                        });
+                        result.candidates_affected.push(Candidate {
+                            row: rows1[1],
+                            col: col2,
+                            num,
+                        });
                         result.unit = Some(Unit::Column);
-                        result.unit_index = Some(vec![col1]);
+                        result.unit_index = Some(vec![col1, col2]);
                         return result;
                     }
                 }

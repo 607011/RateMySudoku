@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "For comparison: time to solve with backtracker: {:.3} ms",
         1e-3 * duration.as_micros() as f64
     );
-    if s0.serialized() != s1.serialized() {
+    if s0.to_string() != s1.to_string() {
         println!("\nSOLUTIONS DIFFER\n");
         println!("Human-like solver:");
         s0.print();

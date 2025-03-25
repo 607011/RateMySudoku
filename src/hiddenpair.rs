@@ -80,8 +80,9 @@ impl Sudoku {
                     }
                 }
                 if result.will_remove_candidates() {
-                    result.unit = Some(Unit::Column);
+                    result.unit = Some(Unit::Row);
                     result.unit_index = Some(vec![row]);
+                    // self.remove_box_candidates(&mut result);
                     return result;
                 }
             }
@@ -169,6 +170,7 @@ impl Sudoku {
                 if result.will_remove_candidates() {
                     result.unit = Some(Unit::Column);
                     result.unit_index = Some(vec![col]);
+                    // self.remove_box_candidates(&mut result);
                     return result;
                 }
             }
@@ -262,7 +264,7 @@ impl Sudoku {
                     }
                     if result.will_remove_candidates() {
                         result.unit_index = Some(vec![box_row * 3 + box_col]);
-                        result.unit = Some(Unit::Row);
+                        result.unit = Some(Unit::Box);
                         return result;
                     }
                 }
