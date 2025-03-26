@@ -504,7 +504,11 @@ impl eframe::App for SudokuApp {
                         ctx.request_repaint();
                     }
                     if ui.button("Copy to clipboard").clicked() {
-                        self.handle_clipboard_copy(&self.sudoku.to_board_string(), ctx);
+                        if ctx.input(|i| i.modifiers.shift) {
+                            self.handle_clipboard_copy(&format!("{}", &self.sudoku), ctx);
+                        } else {
+                            self.handle_clipboard_copy(&self.sudoku.to_board_string(), ctx);
+                        }
                     }
                     // Status information display
                     let status_text = if self.strategy_result.strategy != Strategy::None {
