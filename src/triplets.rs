@@ -2,7 +2,91 @@ use crate::{Candidate, EMPTY, RemovalResult, Strategy, StrategyResult, Sudoku, U
 use std::collections::HashSet;
 
 impl Sudoku {
-    pub fn find_naked_triplet_in_rows(&self) -> RemovalResult {
+    pub fn find_hidden_triplet_in_rows(&self) -> RemovalResult {
+        let mut result = RemovalResult::empty();
+        for row in 0..9 {
+            // For each position in the row, track which positions have each digit as a candidate
+            let mut positions_for_digit: [Vec<usize>; 10] = Default::default();
+
+            // Fill the positions array
+            for col in 0..9 {
+                if self.board[row][col] == EMPTY {
+                    for &num in &self.candidates[row][col] {
+                        positions_for_digit[num as usize].push(col);
+                    }
+                }
+            }
+
+            // Look for triplets: digits that appear as candidates in exactly 3 cells
+            for d1 in 1..=9 {
+                if positions_for_digit[d1].len() != 3 {
+                    continue;
+                }
+                for d2 in (d1 + 1)..=9 {
+                    if positions_for_digit[d2].len() != 3 {
+                        continue;
+                    }
+                    for d3 in (d2 + 1)..=9 {
+                        if positions_for_digit[d3].len() != 3 {
+                            continue;
+                        }
+
+                        // Check if these three digits appear in the same 3 cells
+                        let pos1: HashSet<_> = positions_for_digit[d1].iter().cloned().collect();
+                        let pos2: HashSet<_> = positions_for_digit[d2].iter().cloned().collect();
+                        let pos3: HashSet<_> = positions_for_digit[d3].iter().cloned().collect();
+
+                        let intersection: Vec<_> = pos1
+                            .intersection(&pos2)
+                            .cloned()
+                            .collect::<HashSet<_>>()
+                            .intersection(&pos3)
+                            .cloned()
+                            .collect();
+
+                        // If all three digits appear in the same 3 cells, we have a hidden triplet
+                        if intersection.len() == 3 {
+                            let triplet_cols = intersection;
+                            let triplet_digits = [d1 as u8, d2 as u8, d3 as u8];
+
+                            // Mark these candidates as affected
+                            for &col in &triplet_cols {
+                                for &digit in &triplet_digits {
+                                    result.candidates_affected.push(Candidate {
+                                        row,
+                                        col,
+                                        num: digit,
+                                    });
+                                }
+                            }
+
+                            // Remove all other candidates from these cells
+                            for &col in &triplet_cols {
+                                for &num in &self.candidates[row][col] {
+                                    if !triplet_digits.contains(&num) {
+                                        result.candidates_about_to_be_removed.insert(Candidate {
+                                            row,
+                                            col,
+                                            num,
+                                        });
+                                    }
+                                }
+                            }
+
+                            if result.will_remove_candidates() {
+                                result.unit = Some(Unit::Row);
+                                result.unit_index = Some(vec![row]);
+                                return result;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result
+    }
+
+    pub fn find_obvious_triplet_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for row in 0..9 {
             // For each possible combination of three columns in the row
