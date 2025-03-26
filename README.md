@@ -29,7 +29,7 @@ The following strategies are currently (about to be) implemented:
 | ☒    | ☒    | ☒  | Obvious Pair           |     60 |
 | ☒    | ☒    | ☒  | Hidden Pair            |     70 |
 | ☒    | ☒    | ☒  | Naked Triplet          |     80 |
-| ☐    | ☐    | ☐  | Skyscraper             |    130 |
+| ☒    | ☐    | ☐  | Skyscraper             |    130 |
 | ☒    | ☒    | ☒  | X-Wing                 |    140 |
 
 More to come …
