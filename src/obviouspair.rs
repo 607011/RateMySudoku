@@ -1,6 +1,55 @@
 use crate::{Candidate, RemovalResult, Strategy, StrategyResult, Sudoku, Unit};
 
 impl Sudoku {
+    fn remove_box_candidates(&self, result: &mut RemovalResult) -> bool {
+        if result.candidates_affected.is_empty() {
+            return false;
+        }
+        // Check if all candidates are in the same box
+        let first_box_index =
+            (result.candidates_affected[0].row / 3) * 3 + (result.candidates_affected[0].col / 3);
+        if result.candidates_affected.iter().all(|candidate| {
+            let box_index = (candidate.row / 3) * 3 + (candidate.col / 3);
+            box_index == first_box_index
+        }) {
+            let candidate = result.candidates_affected[0];
+            let (row_start, col_start) = Self::get_box_start(candidate.row, candidate.col);
+            for row in row_start..row_start + 3 {
+                for col in col_start..col_start + 3 {
+                    // Skip the cells that are part of the locked pair
+                    if result
+                        .candidates_affected
+                        .iter()
+                        .any(|candidate| candidate.col == col)
+                        && result
+                            .candidates_affected
+                            .iter()
+                            .any(|candidate| candidate.row == row)
+                    {
+                        continue;
+                    }
+                    // Mark the candidates from the cells in the same box as removable
+                    for &num in &result
+                        .candidates_affected
+                        .iter()
+                        .map(|c| c.num)
+                        .collect::<Vec<_>>()
+                    {
+                        if self.candidates[row][col].contains(&num) {
+                            result.candidates_about_to_be_removed.insert(Candidate {
+                                row,
+                                col,
+                                num,
+                            });
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        false
+    }
+
     pub fn find_obvious_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         // Check for obvious pairs in rows
@@ -12,7 +61,17 @@ impl Sudoku {
 
                 let pair = self.candidates[row][col].clone();
 
-                // Find pair in same row
+                // If the pair is not found in exactly two cells, skip
+                if self.candidates[row]
+                    .iter()
+                    .filter(|&cell| pair.is_subset(cell))
+                    .count()
+                    != 2
+                {
+                    continue;
+                }
+
+                // Find pair in the same row
                 for i in (col + 1)..9 {
                     if self.candidates[row][i] != pair {
                         continue;
@@ -60,7 +119,17 @@ impl Sudoku {
                 }
 
                 let pair = self.candidates[row][col].clone();
-                log::info!("Found pair {:?} at ({}, {})", pair, row, col);
+
+                // If the pair is not found in exactly two cells, skip
+                if self
+                    .candidates
+                    .iter()
+                    .filter(|row| pair.is_subset(&row[col]))
+                    .count()
+                    != 2
+                {
+                    continue;
+                }
 
                 // Find pair in same column
                 for i in (row + 1)..9 {
@@ -183,6 +252,16 @@ impl Sudoku {
     pub fn find_obvious_pair(&self) -> StrategyResult {
         log::info!("Finding obvious pairs in rows");
         let removal_result = self.find_obvious_pair_in_rows();
+        // Check if the pair exists in the same box (locked pair)
+        let mut row_removal = removal_result.clone();
+        if !row_removal.candidates_affected.is_empty()
+            && self.remove_box_candidates(&mut row_removal)
+        {
+            return StrategyResult {
+                strategy: Strategy::LockedPair,
+                removals: row_removal,
+            };
+        }
         if removal_result.will_remove_candidates() {
             return StrategyResult {
                 strategy: Strategy::ObviousPair,
@@ -191,6 +270,16 @@ impl Sudoku {
         }
         log::info!("Finding obvious pairs in columns");
         let removal_result = self.find_obvious_pair_in_cols();
+        // Check if the pair exists in the same box (locked pair)
+        let mut row_removal = removal_result.clone();
+        if !row_removal.candidates_affected.is_empty()
+            && self.remove_box_candidates(&mut row_removal)
+        {
+            return StrategyResult {
+                strategy: Strategy::LockedPair,
+                removals: row_removal,
+            };
+        }
         if removal_result.will_remove_candidates() {
             return StrategyResult {
                 strategy: Strategy::ObviousPair,
