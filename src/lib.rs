@@ -619,15 +619,23 @@ impl Sudoku {
     /// print the board
     #[cfg(feature = "dump")]
     pub fn print(&self) {
-        for row in 0..9 {
-            for col in 0..9 {
-                print!("{} ", self.board[row][col]);
-            }
-            println!();
-        }
         println!("{}", self);
     }
 
+    /// Calculate the index of the box containing the cell at `row`, `col`
+    fn get_box_index(row: usize, col: usize) -> usize {
+        3 * (row / 3) + col / 3
+    }
+
+    /// Calculate the start row and column of the box containing the cell at `row`, `col`
+    fn get_box_start(row: usize, col: usize) -> (usize, usize) {
+        (3 * (row / 3), 3 * (col / 3))
+    }
+
+    /// Calculate the start row and column of the box at `box_index`
+    fn get_box_start_from_index(box_index: usize) -> (usize, usize) {
+        (3 * (box_index / 3), 3 * (box_index % 3))
+    }
 
     /// Collect all the certain numbers in a row
     fn collect_nums_in_row(&self, row: usize) -> HashSet<u8> {
@@ -763,8 +771,7 @@ impl Sudoku {
 
     #[allow(dead_code)]
     fn find_cells_with_candidate_in_box(&self, box_idx: usize, num: u8) -> Vec<(usize, usize)> {
-        let start_row = 3 * (box_idx / 3);
-        let start_col = 3 * (box_idx % 3);
+        let (start_row, start_col) = Self::get_box_start_from_index(box_idx);
         (0..3)
             .flat_map(|r| (0..3).map(move |c| (start_row + r, start_col + c)))
             .filter(|&(row, col)| self.candidates[row][col].contains(&num))
