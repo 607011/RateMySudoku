@@ -8,7 +8,6 @@ mod generator;
 mod hiddenpair;
 mod hiddensingle;
 mod lastdigit;
-mod lockedpair;
 mod obviouspair;
 mod obvioussingle;
 mod pointingpair;
@@ -98,7 +97,6 @@ static STRATEGY_FUNCTIONS: LazyLock<StrategyApplicator> = LazyLock::new(|| {
         (Strategy::LastDigit, Sudoku::find_last_digit),
         (Strategy::ObviousSingle, Sudoku::find_obvious_single),
         (Strategy::HiddenSingle, Sudoku::find_hidden_single),
-        (Strategy::LockedPair, Sudoku::find_locked_pair),
         (Strategy::PointingPair, Sudoku::find_pointing_pair),
         (Strategy::ClaimingPair, Sudoku::find_claiming_pair),
         (Strategy::ObviousPair, Sudoku::find_obvious_pair),
