@@ -693,18 +693,18 @@ impl Sudoku {
                     return;
                 }
                 let box_idx = 3 * (row / 3) + col / 3;
-                let mut notes = (1..=9).collect::<HashSet<u8>>();
+                let mut candidates = ALL_DIGITS.clone();
                 // Remove numbers already present in row, column, and box
                 for &num in &nums_in_row[row] {
-                    notes.remove(&num);
+                    candidates.remove(&num);
                 }
                 for &num in &nums_in_col[col] {
-                    notes.remove(&num);
+                    candidates.remove(&num);
                 }
                 for &num in &nums_in_box[box_idx] {
-                    notes.remove(&num);
+                    candidates.remove(&num);
                 }
-                self.candidates[row][col] = notes;
+                self.candidates[row][col] = candidates;
             })
         });
     }
