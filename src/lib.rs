@@ -911,23 +911,33 @@ impl Sudoku {
 
     /// Apply the strategy result to the Sudoku board.
     pub fn apply(&mut self, strategy_result: &StrategyResult) -> Resolution {
-        log::info!("Applying strategy: {:?}", strategy_result.strategy);
-        let start = std::time::Instant::now();
+        log::info!(
+            "Applying strategy: {}",
+            strategy_result.strategy.to_string()
+        );
+        if strategy_result.strategy == Strategy::LastDigit {
+            self.print();
+            self.dump_notes();
+        }
         let mut clone = self.clone();
-        clone.undo_stack = Vec::new(); // Don't clone the undo stack
+        clone.undo_stack.clear(); // Don't clone the undo stack
         self.undo_stack.push(clone);
-        let elapsed = start.elapsed().as_millis();
-        log::info!("Cloning and pushing to undo stack took {} ms", elapsed);
-        let result = Resolution {
-            nums_removed: strategy_result
-                .removals
-                .candidates_about_to_be_removed
-                .len(),
-            strategy: strategy_result.strategy,
-        };
-        for note in &strategy_result.removals.candidates_about_to_be_removed {
-            assert!(self.candidates[note.row][note.col].contains(&note.num));
-            self.candidates[note.row][note.col].remove(&note.num);
+        for candidate in &strategy_result.removals.candidates_about_to_be_removed {
+            if !self.candidates[candidate.row][candidate.col].contains(&candidate.num) {
+                log::error!(
+                    "Trying to remove candidate {} at ({}, {}) that doesn't exist\nStrategy: {}\nOriginal board: {}\nBacktrace: {}",
+                    candidate.num,
+                    candidate.row,
+                    candidate.col,
+                    strategy_result.strategy.to_string(),
+                    self.original_board(),
+                    std::backtrace::Backtrace::capture()
+                );
+                // self.print();
+                // self.dump_notes();
+            } else {
+                self.candidates[candidate.row][candidate.col].remove(&candidate.num);
+            }
         }
         if let Some(cell) = &strategy_result.removals.sets_cell {
             self.board[cell.row][cell.col] = cell.num;
@@ -937,8 +947,13 @@ impl Sudoku {
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
-        // self.dump_notes();
-        result
+        Resolution {
+            nums_removed: strategy_result
+                .removals
+                .candidates_about_to_be_removed
+                .len(),
+            strategy: strategy_result.strategy,
+        }
     }
 
     /// Undo the last step.
