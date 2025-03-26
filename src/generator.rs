@@ -76,6 +76,8 @@ impl Sudoku {
                 return None;
             }
         }
+        // Store the current board state as the original board string
+        sudoku.original_board = sudoku.board;
         Some(sudoku)
     }
 }
