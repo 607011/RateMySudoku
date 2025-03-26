@@ -78,7 +78,7 @@ impl Sudoku {
         result
     }
 
-    pub fn find_naked_triplet_in_cols(&self) -> RemovalResult {
+    pub fn find_obvious_triplet_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for col in 0..9 {
             // For each possible combination of three rows in the column
@@ -154,7 +154,7 @@ impl Sudoku {
         result
     }
 
-    pub fn find_naked_triplet_in_boxes(&self) -> RemovalResult {
+    pub fn find_obvious_triplet_in_boxes(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
         for box_idx in 0..9 {
             let start_row = 3 * (box_idx / 3);
@@ -236,27 +236,27 @@ impl Sudoku {
         result
     }
 
-    pub fn find_naked_triplet(&self) -> StrategyResult {
+    pub fn find_obvious_triplet(&self) -> StrategyResult {
         log::info!("Finding naked triplets in rows");
-        let result = self.find_naked_triplet_in_rows();
+        let result = self.find_obvious_triplet_in_rows();
         if result.will_remove_candidates() {
             return StrategyResult {
-                strategy: Strategy::NakedTriplet,
+                strategy: Strategy::ObviousTriplet,
                 removals: result,
             };
         }
         log::info!("Finding naked triplets in columns");
-        let result = self.find_naked_triplet_in_cols();
+        let result = self.find_obvious_triplet_in_cols();
         if result.will_remove_candidates() {
             return StrategyResult {
-                strategy: Strategy::NakedTriplet,
+                strategy: Strategy::ObviousTriplet,
                 removals: result,
             };
         }
         log::info!("Finding naked triplets in boxes");
-        let result = self.find_naked_triplet_in_boxes();
+        let result = self.find_obvious_triplet_in_boxes();
         StrategyResult {
-            strategy: Strategy::NakedTriplet,
+            strategy: Strategy::ObviousTriplet,
             removals: result,
         }
     }

@@ -9,7 +9,7 @@ mod hiddenpair;
 mod hiddensingle;
 mod lastdigit;
 mod lockedpair;
-mod nakedtriplet;
+mod triplets;
 mod obviouspair;
 mod obvioussingle;
 mod pointingpair;
@@ -44,7 +44,7 @@ pub enum Strategy {
     LockedPair,
     PointingPair,
     ClaimingPair,
-    NakedTriplet,
+    ObviousTriplet,
     Skyscraper,
     XWing,
 }
@@ -62,7 +62,7 @@ impl Strategy {
             Strategy::ClaimingPair => "Claiming Pair",
             Strategy::ObviousPair => "Obvious Pair",
             Strategy::HiddenPair => "Hidden Pair",
-            Strategy::NakedTriplet => "Naked Triplet",
+            Strategy::ObviousTriplet => "Obvious Triplet",
             Strategy::Skyscraper => "Skyscraper",
             Strategy::XWing => "X-Wing",
         }
@@ -79,7 +79,7 @@ impl Strategy {
             Strategy::ClaimingPair => 50,
             Strategy::ObviousPair => 60,
             Strategy::HiddenPair => 70,
-            Strategy::NakedTriplet => 80,
+            Strategy::ObviousTriplet => 80,
             Strategy::Skyscraper => 130,
             Strategy::XWing => 140,
         }
@@ -103,7 +103,7 @@ static STRATEGY_FUNCTIONS: LazyLock<StrategyApplicator> = LazyLock::new(|| {
         (Strategy::ClaimingPair, Sudoku::find_claiming_pair),
         (Strategy::ObviousPair, Sudoku::find_obvious_pair),
         (Strategy::HiddenPair, Sudoku::find_hidden_pair),
-        (Strategy::NakedTriplet, Sudoku::find_naked_triplet),
+        (Strategy::ObviousTriplet, Sudoku::find_obvious_triplet),
         (Strategy::Skyscraper, Sudoku::find_skyscraper),
         (Strategy::XWing, Sudoku::find_xwing),
     ];
