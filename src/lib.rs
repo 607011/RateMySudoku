@@ -126,7 +126,7 @@ pub struct Cell {
     pub num: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RemovalResult {
     pub sets_cell: Option<Cell>,
     pub cells_affected: Vec<Cell>,
