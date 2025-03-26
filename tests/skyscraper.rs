@@ -4,11 +4,11 @@ mod tests {
     #[test]
     fn test_skyscraper_row() {
         let mut sudoku: Sudoku = Sudoku::from_string(
-            "1678925349524.386.8345..9..7.3.48.....835......5.2.3.8..1..5.89.869.14..579284613",
+            "001028759087905132952173486020700340000500270714832695000090817078051963190087524",
         )
         .expect("Failed to create Sudoku from string");
         sudoku.calc_candidates();
-        let result = sudoku.find_skyscraper_rows();
+        let result = sudoku.find_skyscraper_in_rows();
         println!("{:?}", result);
         assert!(result.sets_cell.is_none());
     }
@@ -16,11 +16,11 @@ mod tests {
     #[test]
     fn test_skyscraper_col() {
         let mut sudoku: Sudoku = Sudoku::from_string(
-            "1678925349524.386.8345..9..7.3.48.....835......5.2.3.8..1..5.89.869.14..579284613",
+            "697000002001972063003006790912000607374260950865709024148693275709024006006807009",
         )
         .expect("Failed to create Sudoku from string");
         sudoku.calc_candidates();
-        let result = sudoku.find_skyscraper_cols();
+        let result = sudoku.find_skyscraper_in_cols();
         println!("{:?}", result);
         assert!(result.sets_cell.is_none());
     }
