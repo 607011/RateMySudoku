@@ -2,6 +2,9 @@ use crate::{Candidate, RemovalResult, Strategy, StrategyResult, Sudoku};
 
 impl Sudoku {
     fn remove_box_candidates(&self, result: &mut RemovalResult) -> bool {
+        if result.candidates_affected.is_empty() {
+            return false;
+        }
         if result.candidates_affected.iter().all(|candidate| {
             let box_index = (candidate.row / 3) * 3 + (candidate.col / 3);
             let first_box_index = (result.candidates_affected[0].row / 3) * 3
