@@ -1,6 +1,10 @@
 use rate_my_sudoku::Sudoku;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+        .format_timestamp(None)
+        .format_target(false)
+        .init();
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         println!("Please provide a serialized Sudoku board");

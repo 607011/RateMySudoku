@@ -4,6 +4,11 @@ use std::sync::mpsc;
 use std::thread;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+        .format_timestamp(None)
+        .format_target(false)
+        .init();
+
     let default_filled_cells: usize = 20;
     let args: Vec<String> = std::env::args().collect();
     let filled_cells = if args.len() > 1 {
