@@ -93,19 +93,19 @@ impl Sudoku {
 
     pub fn find_last_digit(&self) -> StrategyResult {
         let mut result = StrategyResult::new(Strategy::LastDigit);
-        log::info!("Finding last digits in rows");
+        log::info!("Trying to find last digit in rows");
         let removal_result = self.find_last_digit_in_rows();
         if removal_result.will_remove_candidates() {
             result.removals = removal_result;
             return result;
         }
-        log::info!("Finding last digits in columns");
+        log::info!("Trying to find last digit in columns");
         let removal_result = self.find_last_digit_in_cols();
         if removal_result.will_remove_candidates() {
             result.removals = removal_result;
             return result;
         }
-        log::info!("Finding last digits in boxes");
+        log::info!("Trying to find last digit in boxes");
         let removal_result = self.find_last_digit_in_boxes();
         result.removals = removal_result;
         result
