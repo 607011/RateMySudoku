@@ -15,7 +15,7 @@ impl Sudoku {
                 continue;
             }
             let missing_digits: HashSet<u8> = ALL_DIGITS
-                .difference(&self.calc_nums_in_row(row))
+                .difference(&self.collect_nums_in_row(row))
                 .cloned()
                 .collect();
             assert_eq!(missing_digits.len(), 1);
@@ -39,7 +39,7 @@ impl Sudoku {
             }
             let row = empty_cells[0];
             let missing_digits: HashSet<u8> = ALL_DIGITS
-                .difference(&self.calc_nums_in_col(col))
+                .difference(&self.collect_nums_in_col(col))
                 .cloned()
                 .collect();
             assert_eq!(missing_digits.len(), 1);
@@ -76,7 +76,7 @@ impl Sudoku {
                 continue;
             }
             let missing_digits: HashSet<u8> = ALL_DIGITS
-                .difference(&self.calc_nums_in_box(box_index))
+                .difference(&self.collect_nums_in_box(box_index))
                 .cloned()
                 .collect();
             if missing_digits.len() != 1 {

@@ -628,38 +628,37 @@ impl Sudoku {
         println!("{}", self);
     }
 
-    fn calc_nums_in_row(&self, row: usize) -> HashSet<u8> {
-        let mut nums = HashSet::new();
-        for col in 0..9 {
-            if self.board[row][col] != EMPTY {
-                nums.insert(self.board[row][col]);
-            }
-        }
-        nums
+
+    /// Collect all the certain numbers in a row
+    fn collect_nums_in_row(&self, row: usize) -> HashSet<u8> {
+        (0..9)
+            .filter_map(|col| {
+                let num = self.board[row][col];
+                if num != EMPTY { Some(num) } else { None }
+            })
+            .collect()
     }
 
-    fn calc_nums_in_col(&self, col: usize) -> HashSet<u8> {
-        let mut nums = HashSet::new();
-        for row in 0..9 {
-            if self.board[row][col] != EMPTY {
-                nums.insert(self.board[row][col]);
-            }
-        }
-        nums
+    /// Collect all the certain numbers in a column
+    fn collect_nums_in_col(&self, col: usize) -> HashSet<u8> {
+        (0..9)
+            .filter_map(|row| {
+                let num = self.board[row][col];
+                if num != EMPTY { Some(num) } else { None }
+            })
+            .collect()
     }
 
-    fn calc_nums_in_box(&self, box_index: usize) -> HashSet<u8> {
-        let mut nums = HashSet::new();
-        let start_row = 3 * (box_index / 3);
-        let start_col = 3 * (box_index % 3);
-        for i in 0..3 {
-            for j in 0..3 {
-                if self.board[start_row + i][start_col + j] != EMPTY {
-                    nums.insert(self.board[start_row + i][start_col + j]);
-                }
-            }
-        }
-        nums
+    /// Collect all the certain numbers in a box
+    fn collect_nums_in_box(&self, box_index: usize) -> HashSet<u8> {
+        let (start_row, start_col) = Self::get_box_start_from_index(box_index);
+        (0..3)
+            .flat_map(|i| (0..3).map(move |j| (start_row + i, start_col + j)))
+            .filter_map(|(row, col)| {
+                let num = self.board[row][col];
+                (num != EMPTY).then_some(num)
+            })
+            .collect()
     }
 
     pub fn has_candidates(&self) -> bool {
@@ -675,11 +674,10 @@ impl Sudoku {
         let mut nums_in_col: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
         let mut nums_in_box: [HashSet<u8>; 9] = std::array::from_fn(|_| HashSet::new());
         for i in 0..9 {
-            nums_in_row[i] = self.calc_nums_in_row(i);
-            nums_in_col[i] = self.calc_nums_in_col(i);
-            nums_in_box[i] = self.calc_nums_in_box(i);
+            nums_in_row[i] = self.collect_nums_in_row(i);
+            nums_in_col[i] = self.collect_nums_in_col(i);
+            nums_in_box[i] = self.collect_nums_in_box(i);
         }
-
         // Then populate notes for empty cells
         (0..9).for_each(|row| {
             (0..9).for_each(|col| {
