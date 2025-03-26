@@ -9,23 +9,17 @@ impl Sudoku {
     /// Returns the number of notes removed as a result of placing new digits.
     pub fn find_hidden_single(&self) -> StrategyResult {
         let mut result = StrategyResult::new(Strategy::HiddenSingle);
-        log::info!("Finding hidden singles in boxes");
         let box_result = self.find_hidden_single_box();
-        log::info!("{:?}", box_result);
         if box_result.will_remove_candidates() {
             result.removals = box_result;
             return result;
         }
-        log::info!("Finding hidden singles in rows");
         let row_result = self.find_hidden_single_row();
-        log::info!("{:?}", row_result);
         if row_result.will_remove_candidates() {
             result.removals = row_result;
             return result;
         }
-        log::info!("Finding hidden singles in columns");
         let col_result = self.find_hidden_single_col();
-        log::info!("{:?}", col_result);
         if col_result.will_remove_candidates() {
             result.removals = col_result;
             return result;

@@ -46,13 +46,6 @@ impl Sudoku {
                         }
                     }
                     if result.will_remove_candidates() {
-                        log::info!(
-                            "Found X-Wing: num {:?} in *rows* {} and {} at columns {:?}",
-                            num,
-                            row1,
-                            row2,
-                            cols1
-                        );
                         result.candidates_affected.push(Candidate {
                             row: row1,
                             col: cols1[0],
@@ -131,13 +124,6 @@ impl Sudoku {
                         }
                     }
                     if result.will_remove_candidates() {
-                        log::info!(
-                            "Found X-Wing: num {:?} in *columns* {} and {} at rows {:?}",
-                            num,
-                            col1,
-                            col2,
-                            rows1
-                        );
                         result.candidates_affected.push(Candidate {
                             row: rows1[0],
                             col: col1,

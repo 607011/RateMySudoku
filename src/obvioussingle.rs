@@ -7,12 +7,6 @@ impl Sudoku {
                 if self.candidates[row][col].len() != 1 {
                     continue;
                 }
-                log::info!(
-                    "Found obvious single {} at ({}, {})",
-                    self.board[row][col],
-                    row,
-                    col
-                );
                 assert_eq!(self.board[row][col], EMPTY);
                 let &num = self.candidates[row][col].iter().next().unwrap();
                 return StrategyResult {
