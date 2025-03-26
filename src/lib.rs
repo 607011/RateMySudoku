@@ -9,11 +9,11 @@ mod hiddenpair;
 mod hiddensingle;
 mod lastdigit;
 mod lockedpair;
-mod triplets;
 mod obviouspair;
 mod obvioussingle;
 mod pointingpair;
 mod skyscraper;
+mod triplets;
 mod xwing;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -114,7 +114,7 @@ static STRATEGY_FUNCTIONS: LazyLock<StrategyApplicator> = LazyLock::new(|| {
 pub const EMPTY: u8 = 0;
 pub static ALL_DIGITS: LazyLock<HashSet<u8>> = LazyLock::new(|| (1..=9).collect());
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Candidate {
     pub row: usize,
     pub col: usize,
