@@ -129,7 +129,6 @@ pub struct Cell {
 #[derive(Debug, Clone)]
 pub struct RemovalResult {
     pub sets_cell: Option<Cell>,
-    pub cells_affected: Vec<Cell>,
     pub candidates_affected: Vec<Candidate>,
     pub candidates_about_to_be_removed: HashSet<Candidate>,
     pub unit: Option<Unit>,
@@ -140,7 +139,6 @@ impl RemovalResult {
     pub fn empty() -> Self {
         RemovalResult {
             sets_cell: None,
-            cells_affected: Vec::new(),
             candidates_affected: Vec::new(),
             candidates_about_to_be_removed: HashSet::new(),
             unit: None,
@@ -152,7 +150,6 @@ impl RemovalResult {
     }
     pub fn clear(&mut self) {
         self.sets_cell = None;
-        self.cells_affected.clear();
         self.candidates_affected.clear();
         self.candidates_about_to_be_removed.clear();
         self.unit = None;
@@ -892,7 +889,6 @@ impl Sudoku {
         let removal_result = self.collect_candidates(&[num], row, col);
         RemovalResult {
             sets_cell: Some(cell.clone()),
-            cells_affected: vec![cell],
             candidates_affected: vec![Candidate { row, col, num }],
             candidates_about_to_be_removed: {
                 let mut candidates = removal_result.candidates_about_to_be_removed;
