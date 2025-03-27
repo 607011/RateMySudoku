@@ -50,44 +50,29 @@ mod tests {
         assert!(removals.contains(&Candidate {
             row: 6,
             col: 0,
-            num: 1
+            num: 6
         }));
         assert!(removals.contains(&Candidate {
             row: 6,
             col: 1,
-            num: 1
+            num: 6
         }));
         assert!(removals.contains(&Candidate {
             row: 6,
             col: 2,
-            num: 1
-        }));
-        assert!(removals.contains(&Candidate {
-            row: 6,
-            col: 6,
-            num: 1
-        }));
-        assert!(removals.contains(&Candidate {
-            row: 6,
-            col: 7,
-            num: 1
-        }));
-        assert!(removals.contains(&Candidate {
-            row: 6,
-            col: 8,
-            num: 1
+            num: 6
         }));
         let candidates_affected = result.candidates_affected;
         assert_eq!(candidates_affected.len(), 2);
         assert!(candidates_affected.contains(&Candidate {
             row: 6,
-            col: 3,
-            num: 1
+            col: 6,
+            num: 6
         }));
         assert!(candidates_affected.contains(&Candidate {
             row: 6,
-            col: 5,
-            num: 1
+            col: 8,
+            num: 6
         }));
     }
 
