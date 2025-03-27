@@ -32,36 +32,6 @@ impl Sudoku {
                     }
                 }
             }
-            result
-                .candidates_affected
-                .extend(
-                    digit_pairs
-                        .iter()
-                        .flat_map(|&(digit1, digit2, col1, col2)| {
-                            vec![
-                                Candidate {
-                                    row,
-                                    col: col1,
-                                    num: digit1,
-                                },
-                                Candidate {
-                                    row,
-                                    col: col1,
-                                    num: digit2,
-                                },
-                                Candidate {
-                                    row,
-                                    col: col2,
-                                    num: digit1,
-                                },
-                                Candidate {
-                                    row,
-                                    col: col2,
-                                    num: digit2,
-                                },
-                            ]
-                        }),
-                );
             // Apply the strategy: for each hidden pair, remove all other digits from those cells
             for (digit1, digit2, col1, col2) in digit_pairs {
                 // Remove all other digits from these two cells
@@ -82,7 +52,29 @@ impl Sudoku {
                 if result.will_remove_candidates() {
                     result.unit = Some(Unit::Row);
                     result.unit_index = Some(vec![row]);
-                    // self.remove_box_candidates(&mut result);
+                    result.candidates_affected.extend(vec![
+                        Candidate {
+                            row,
+                            col: col1,
+                            num: digit1,
+                        },
+                        Candidate {
+                            row,
+                            col: col1,
+                            num: digit2,
+                        },
+                        Candidate {
+                            row,
+                            col: col2,
+                            num: digit1,
+                        },
+                        Candidate {
+                            row,
+                            col: col2,
+                            num: digit2,
+                        },
+                    ]);
+                    self.remove_box_candidates(&mut result);
                     return result;
                 }
             }
@@ -120,36 +112,7 @@ impl Sudoku {
                     }
                 }
             }
-            result
-                .candidates_affected
-                .extend(
-                    digit_pairs
-                        .iter()
-                        .flat_map(|&(digit1, digit2, row1, row2)| {
-                            vec![
-                                Candidate {
-                                    row: row1,
-                                    col,
-                                    num: digit1,
-                                },
-                                Candidate {
-                                    row: row1,
-                                    col,
-                                    num: digit2,
-                                },
-                                Candidate {
-                                    row: row2,
-                                    col,
-                                    num: digit1,
-                                },
-                                Candidate {
-                                    row: row2,
-                                    col,
-                                    num: digit2,
-                                },
-                            ]
-                        }),
-                );
+
             // Apply the strategy: for each hidden pair, remove all other digits from those cells
             for (digit1, digit2, row1, row2) in digit_pairs {
                 // Remove all other digits from these two cells
@@ -170,7 +133,29 @@ impl Sudoku {
                 if result.will_remove_candidates() {
                     result.unit = Some(Unit::Column);
                     result.unit_index = Some(vec![col]);
-                    // self.remove_box_candidates(&mut result);
+                    self.remove_box_candidates(&mut result);
+                    result.candidates_affected.extend(vec![
+                        Candidate {
+                            row: row1,
+                            col,
+                            num: digit1,
+                        },
+                        Candidate {
+                            row: row1,
+                            col,
+                            num: digit2,
+                        },
+                        Candidate {
+                            row: row2,
+                            col,
+                            num: digit1,
+                        },
+                        Candidate {
+                            row: row2,
+                            col,
+                            num: digit2,
+                        },
+                    ]);
                     return result;
                 }
             }
@@ -217,34 +202,7 @@ impl Sudoku {
                         }
                     }
                 }
-                result
-                    .candidates_affected
-                    .extend(digit_pairs.iter().flat_map(
-                        |&(digit1, digit2, (row1, col1), (row2, col2))| {
-                            vec![
-                                Candidate {
-                                    row: row1,
-                                    col: col1,
-                                    num: digit1,
-                                },
-                                Candidate {
-                                    row: row1,
-                                    col: col1,
-                                    num: digit2,
-                                },
-                                Candidate {
-                                    row: row2,
-                                    col: col2,
-                                    num: digit1,
-                                },
-                                Candidate {
-                                    row: row2,
-                                    col: col2,
-                                    num: digit2,
-                                },
-                            ]
-                        },
-                    ));
+
                 // Apply the strategy: for each hidden pair, remove all other digits from those cells
                 for (digit1, digit2, cell1, cell2) in digit_pairs {
                     // Remove all other digits from these two cells
@@ -265,6 +223,28 @@ impl Sudoku {
                     if result.will_remove_candidates() {
                         result.unit_index = Some(vec![box_row * 3 + box_col]);
                         result.unit = Some(Unit::Box);
+                        result.candidates_affected.extend(vec![
+                            Candidate {
+                                row: cell1.0,
+                                col: cell1.1,
+                                num: digit1,
+                            },
+                            Candidate {
+                                row: cell1.0,
+                                col: cell1.1,
+                                num: digit2,
+                            },
+                            Candidate {
+                                row: cell2.0,
+                                col: cell2.1,
+                                num: digit1,
+                            },
+                            Candidate {
+                                row: cell2.0,
+                                col: cell2.1,
+                                num: digit2,
+                            },
+                        ]);
                         return result;
                     }
                 }
