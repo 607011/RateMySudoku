@@ -238,6 +238,12 @@ impl Default for Sudoku {
     }
 }
 
+impl PartialEq for Sudoku {
+    fn eq(&self, other: &Self) -> bool {
+        self.board == other.board
+    }
+}
+
 impl Sudoku {
     pub fn new() -> Sudoku {
         Sudoku {

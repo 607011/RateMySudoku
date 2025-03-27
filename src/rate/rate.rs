@@ -23,7 +23,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Time to solve: {:.3} ms",
         1e-3 * duration.as_micros() as f64
     );
-
     let start = std::time::Instant::now();
     let mut s1 = Sudoku::new();
     s1.set_board_string(&args[1])?;
@@ -33,12 +32,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "For comparison: time to solve with backtracker: {:.3} ms",
         1e-3 * duration.as_micros() as f64
     );
-    if s0.to_string() != s1.to_string() {
+    if s0 != s1 {
         println!("\nSOLUTIONS DIFFER\n");
-        println!("Human-like solver:");
-        s0.print();
-        println!("Backtracking solver:");
-        s1.print();
+        println!("Human-like solver:\n{}", s0);
+        println!("Backtracking solver:\n{}", s1);
     }
     Ok(())
 }
