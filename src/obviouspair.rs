@@ -1,7 +1,7 @@
 use crate::{Candidate, RemovalResult, Strategy, StrategyResult, Sudoku, Unit};
 
 impl Sudoku {
-    fn remove_box_candidates(&self, result: &mut RemovalResult) -> bool {
+    pub fn remove_box_candidates(&self, result: &mut RemovalResult) -> bool {
         if result.candidates_affected.is_empty() {
             return false;
         }
