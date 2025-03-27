@@ -4,51 +4,57 @@ use std::collections::HashSet;
 impl Sudoku {
     pub fn find_pointing_pair_in_rows(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
-        for box_row in (0..9).step_by(3) {
-            for box_col in (0..9).step_by(3) {
-                for num in 1..=9 {
-                    // Collect unique rows where candidate `num` appears in this box
-                    let rows_with_num: HashSet<usize> = (0..3)
-                        .flat_map(|i| (0..3).map(move |j| (box_row + i, box_col + j)))
-                        .filter(|&(row, col)| self.candidates[row][col].contains(&num))
-                        .map(|(row, _)| row)
-                        .collect();
-                    // `num` must appear in exactly one row within the box
-                    if rows_with_num.len() != 1 {
-                        continue;
+        // First iterate over possible digits
+        for num in 1..=9 {
+            // Then iterate over all rows
+            for row in 0..9 {
+                // Check each box that intersects with this row
+                let box_row = (row / 3) * 3;
+                // Find all cells in this row and within the box that have this candidate
+                let cells_with_num: Vec<(usize, usize)> = (0..9)
+                    .filter(|&col| self.candidates[row][col].contains(&num))
+                    .map(|col| (row, col))
+                    .filter(|&(_, col)| (col / 3) * 3 == box_row)
+                    .collect();
+                // For a pointing pair, we need exactly 2 cells in same box
+                if cells_with_num.len() != 2 {
+                    continue;
+                }
+                // Check if both cells are in the same box
+                let box_indices: HashSet<usize> =
+                    cells_with_num.iter().map(|&(_, col)| col / 3).collect();
+                if box_indices.len() != 1 {
+                    continue;
+                }
+                // Check there are no other cells in the box with this candidate
+                let (box_row, box_col) = Self::get_box_start(row, cells_with_num[0].1);
+                // Check if any other cells in the box outside our row have this candidate
+                let has_other_cells_with_num = (box_row..box_row + 3)
+                    .flat_map(|r| (box_col..box_col + 3).map(move |c| (r, c)))
+                    .filter(|&(r, _)| r != row) // Skip cells in our row
+                    .any(|(r, c)| self.candidates[r][c].contains(&num));
+                if has_other_cells_with_num {
+                    continue;
+                }
+                let box_col = (cells_with_num[0].1 / 3) * 3;
+                // Check if there are candidates to remove in the same row outside the box
+                for col in 0..9 {
+                    if (col < box_col || col >= box_col + 3)
+                        && self.candidates[row][col].contains(&num)
+                    {
+                        result
+                            .candidates_about_to_be_removed
+                            .insert(Candidate { row, col, num });
                     }
-                    let row = *rows_with_num.iter().next().unwrap();
-                    // Check how many cells in this box's row contain the candidate
-                    let box_cells_with_num = (box_col..box_col + 3)
-                        .filter(|&col| self.candidates[row][col].contains(&num))
-                        .count();
-                    // For a proper pointing pair, we want 2 cells in this box's row
-                    if box_cells_with_num != 2 {
-                        continue;
+                }
+                if result.will_remove_candidates() {
+                    // Add the source cells as affected candidates
+                    for &(_, col) in &cells_with_num {
+                        result.candidates_affected.push(Candidate { row, col, num });
                     }
-                    // Check if there are candidates to remove outside the box
-                    for col in 0..9 {
-                        if (col < box_col || col >= box_col + 3)
-                            && self.candidates[row][col].contains(&num)
-                        {
-                            result.candidates_about_to_be_removed.insert(Candidate {
-                                row,
-                                col,
-                                num,
-                            });
-                        }
-                    }
-                    if result.will_remove_candidates() {
-                        // For each cell with the candidate in this box and row, add it to affected candidates
-                        for col in box_col..box_col + 3 {
-                            if self.candidates[row][col].contains(&num) {
-                                result.candidates_affected.push(Candidate { row, col, num });
-                            }
-                        }
-                        result.unit = Some(Unit::Row);
-                        result.unit_index = Some(vec![row]);
-                        return result;
-                    }
+                    result.unit = Some(Unit::Row);
+                    result.unit_index = Some(vec![row]);
+                    return result;
                 }
             }
         }
@@ -57,50 +63,57 @@ impl Sudoku {
 
     pub fn find_pointing_pair_in_cols(&self) -> RemovalResult {
         let mut result = RemovalResult::empty();
-        for box_row in (0..9).step_by(3) {
-            for box_col in (0..9).step_by(3) {
-                for num in 1..=9 {
-                    // Collect unique columns where candidate `num` appears in this box
-                    let cols_with_num: HashSet<usize> = (0..3)
-                        .flat_map(|i| (0..3).map(move |j| (box_row + j, box_col + i)))
-                        .filter(|&(row, col)| self.candidates[row][col].contains(&num))
-                        .map(|(_, col)| col)
-                        .collect();
-                    // `num` must appear exactly one column within the box
-                    if cols_with_num.len() != 1 {
-                        continue;
+        // First iterate over possible digits
+        for num in 1..=9 {
+            // Then iterate over all columns
+            for col in 0..9 {
+                // Check each box that intersects with this column
+                let box_col = (col / 3) * 3;
+                // Find all cells in this column and within the box that have this candidate
+                let cells_with_num: Vec<(usize, usize)> = (0..9)
+                    .filter(|&row| self.candidates[row][col].contains(&num))
+                    .map(|row| (row, col))
+                    .filter(|&(row, _)| (row / 3) * 3 == box_col)
+                    .collect();
+                // For a pointing pair, we need exactly 2 cells in same box
+                if cells_with_num.len() != 2 {
+                    continue;
+                }
+                // Check if both cells are in the same box
+                let box_indices: HashSet<usize> =
+                    cells_with_num.iter().map(|&(row, _)| row / 3).collect();
+                if box_indices.len() != 1 {
+                    continue;
+                }
+                // Check there are no other cells in the box with this candidate
+                let (box_row, box_col) = Self::get_box_start(cells_with_num[0].0, col);
+                // Check if any other cells in the box have this candidate
+                let has_other_cells_with_num = (box_row..box_row + 3)
+                    .flat_map(|r| (box_col..box_col + 3).map(move |c| (r, c)))
+                    .filter(|&(_, c)| c != col) // Skip cells in our column
+                    .any(|(r, c)| self.candidates[r][c].contains(&num));
+                if has_other_cells_with_num {
+                    continue;
+                }
+                let box_row = (cells_with_num[0].0 / 3) * 3;
+                // Check if there are candidates to remove in the same column outside the box
+                for row in 0..9 {
+                    if (row < box_row || row >= box_row + 3)
+                        && self.candidates[row][col].contains(&num)
+                    {
+                        result
+                            .candidates_about_to_be_removed
+                            .insert(Candidate { row, col, num });
                     }
-                    let col = *cols_with_num.iter().next().unwrap();
-                    // Check how many cells in this box's row contain the candidate
-                    let box_cells_with_num = (box_col..box_col + 3)
-                        .filter(|&row| self.candidates[row][col].contains(&num))
-                        .count();
-                    // For a proper pointing pair, we want 2 cells in this box's column
-                    if box_cells_with_num != 2 {
-                        continue;
+                }
+                if result.will_remove_candidates() {
+                    // Add the source cells as affected candidates
+                    for &(row, _) in &cells_with_num {
+                        result.candidates_affected.push(Candidate { row, col, num });
                     }
-                    for row in 0..9 {
-                        if (row < box_row || row >= box_row + 3)
-                            && self.candidates[row][col].contains(&num)
-                        {
-                            result.candidates_about_to_be_removed.insert(Candidate {
-                                row,
-                                col,
-                                num,
-                            });
-                        }
-                    }
-                    if result.will_remove_candidates() {
-                        // For each cell with the candidate in this box and column, add it to affected candidates
-                        for row in box_row..box_row + 3 {
-                            if self.candidates[row][col].contains(&num) {
-                                result.candidates_affected.push(Candidate { row, col, num });
-                            }
-                        }
-                        result.unit = Some(Unit::Column);
-                        result.unit_index = Some(vec![col]);
-                        return result;
-                    }
+                    result.unit = Some(Unit::Column);
+                    result.unit_index = Some(vec![col]);
+                    return result;
                 }
             }
         }
@@ -111,8 +124,7 @@ impl Sudoku {
         let mut result = RemovalResult::empty();
         // Check each 3x3 box
         for box_idx in 0..9 {
-            let box_row = (box_idx / 3) * 3;
-            let box_col = (box_idx % 3) * 3;
+            let (box_row, box_col) = Self::get_box_start_from_index(box_idx);
             // For each possible digit 1-9
             for num in 1..=9 {
                 // Find all cells in this box containing the candidate
@@ -142,7 +154,6 @@ impl Sudoku {
                     if col >= box_col && col < box_col + 3 {
                         continue;
                     }
-
                     if self.candidates[row][col].contains(&num) {
                         result
                             .candidates_about_to_be_removed
