@@ -116,6 +116,19 @@ impl Sudoku {
                 }
             }
 
+            // Filter out candidates where tops are not in the same box column
+            for i in (0..skyscraper_candidates.len()).rev() {
+                for j in (i + 1..skyscraper_candidates.len()).rev() {
+                    let top1_box_col = skyscraper_candidates[i].top.col / 3;
+                    let top2_box_col = skyscraper_candidates[j].top.col / 3;
+                    if top1_box_col != top2_box_col {
+                        skyscraper_candidates.remove(j);
+                        skyscraper_candidates.remove(i);
+                        break;
+                    }
+                }
+            }
+
             if skyscraper_candidates.is_empty() {
                 continue;
             }
@@ -224,6 +237,23 @@ impl Sudoku {
                             skyscraper_candidates.push(link1);
                             skyscraper_candidates.push(link2);
                         }
+                    } else if col1[1].row == col2[1].row {
+                        // Tops share the same row
+                        if (col1[0].row < col1[1].row && col2[0].row < col2[1].row)
+                            || (col1[0].row > col1[1].row && col2[0].row > col2[1].row)
+                        {
+                            // Bases are on the same side (either above or below) of their tops
+                            let link1 = StrongLink {
+                                base: col1[1],
+                                top: col1[0],
+                            };
+                            let link2 = StrongLink {
+                                base: col2[1],
+                                top: col2[0],
+                            };
+                            skyscraper_candidates.push(link1);
+                            skyscraper_candidates.push(link2);
+                        }
                     }
                 }
             }
@@ -258,6 +288,19 @@ impl Sudoku {
             for i in (0..skyscraper_candidates.len()).rev() {
                 for j in (i + 1..skyscraper_candidates.len()).rev() {
                     if skyscraper_candidates[i].top.row == skyscraper_candidates[j].top.row {
+                        skyscraper_candidates.remove(j);
+                        skyscraper_candidates.remove(i);
+                        break;
+                    }
+                }
+            }
+
+            // Filter out candidates where tops are not in the same box row
+            for i in (0..skyscraper_candidates.len()).rev() {
+                for j in (i + 1..skyscraper_candidates.len()).rev() {
+                    let top1_box_row = skyscraper_candidates[i].top.row / 3;
+                    let top2_box_row = skyscraper_candidates[j].top.row / 3;
+                    if top1_box_row != top2_box_row {
                         skyscraper_candidates.remove(j);
                         skyscraper_candidates.remove(i);
                         break;
