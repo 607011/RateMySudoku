@@ -911,10 +911,6 @@ impl Sudoku {
             "Applying strategy: {}",
             strategy_result.strategy.to_string()
         );
-        if strategy_result.strategy == Strategy::LastDigit {
-            self.print();
-            self.dump_notes();
-        }
         let mut clone = self.clone();
         clone.undo_stack.clear(); // Don't clone the undo stack
         self.undo_stack.push(clone);
@@ -929,8 +925,6 @@ impl Sudoku {
                     self.original_board(),
                     std::backtrace::Backtrace::capture()
                 );
-                // self.print();
-                // self.dump_notes();
             } else {
                 self.candidates[candidate.row][candidate.col].remove(&candidate.num);
             }
