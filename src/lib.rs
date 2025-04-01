@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::LazyLock;
 
 mod claimingpair;
-mod generator;
+pub mod generator;
 mod hiddenpair;
 mod hiddensingle;
 mod lastdigit;
@@ -245,7 +245,7 @@ impl PartialEq for Sudoku {
 }
 
 impl Sudoku {
-    pub fn new() -> Sudoku {
+    pub fn new() -> Self {
         Sudoku {
             board: [[EMPTY; 9]; 9],
             original_board: [[EMPTY; 9]; 9],
@@ -255,10 +255,20 @@ impl Sudoku {
         }
     }
 
-    pub fn from_string(board_string: &str) -> Result<Sudoku, SudokuError> {
+    pub fn from_string(board_string: &str) -> Result<Self, SudokuError> {
         let mut sudoku = Sudoku::new();
         sudoku.set_board_string(board_string)?;
         Ok(sudoku)
+    }
+
+    pub fn from_board(board: [[u8; 9]; 9]) -> Self {
+        Sudoku {
+            board,
+            original_board: board,
+            candidates: std::array::from_fn(|_| std::array::from_fn(|_| HashSet::new())),
+            rating: HashMap::new(),
+            undo_stack: Vec::new(),
+        }
     }
 
     pub fn clear(&mut self) {
@@ -770,6 +780,98 @@ impl Sudoku {
 
     pub fn solve_by_backtracking(&mut self) -> bool {
         self.solve()
+    }
+
+    /// Find all possible solutions to the Sudoku puzzle
+    /// Returns a vector of all valid solutions as 2D arrays
+    pub fn all_solutions(&self) -> Vec<[[u8; 9]; 9]> {
+        let mut solutions = Vec::new();
+        let mut board_copy = self.clone();
+        board_copy.find_all_solutions(&mut solutions);
+        solutions
+    }
+
+    /// Helper method for all_solutions that recursively finds all solutions
+    fn find_all_solutions(&mut self, solutions: &mut Vec<[[u8; 9]; 9]>) {
+        // Find empty cell
+        let mut empty_found = false;
+        let mut row = 0;
+        let mut col = 0;
+        'find_empty: for r in 0..9 {
+            for c in 0..9 {
+                if self.board[r][c] == EMPTY {
+                    row = r;
+                    col = c;
+                    empty_found = true;
+                    break 'find_empty;
+                }
+            }
+        }
+
+        // If no empty cell was found, the board is solved - add to solutions
+        if !empty_found {
+            solutions.push(self.board);
+            return;
+        }
+
+        // Try placing digits 1-9 in the empty cell
+        for num in 1..=9 {
+            if !self.can_place(row, col, num) {
+                continue;
+            }
+            self.board[row][col] = num;
+            self.find_all_solutions(solutions);
+            self.board[row][col] = EMPTY;
+        }
+    }
+
+    fn count_solutions(sudoku: &mut Sudoku, count: &mut usize, max_count: usize) -> bool {
+        if *count >= max_count {
+            return true; // Early return if we already found enough solutions
+        }
+        let mut found_empty = false;
+        let mut empty_row = 0;
+        let mut empty_col = 0;
+        'find_empty: for row in 0..9 {
+            for col in 0..9 {
+                if sudoku.board[row][col] == EMPTY {
+                    empty_row = row;
+                    empty_col = col;
+                    found_empty = true;
+                    break 'find_empty;
+                }
+            }
+        }
+        // If no empty cell is found, we have a solution
+        if !found_empty {
+            *count += 1;
+            return *count >= max_count;
+        }
+        // Try each possible value
+        for num in 1..=9 {
+            if !sudoku.can_place(empty_row, empty_col, num) {
+                continue;
+            }
+            // Place and recurse
+            sudoku.board[empty_row][empty_col] = num;
+            if Self::count_solutions(sudoku, count, max_count) {
+                return true;
+            }
+            // Backtrack
+            sudoku.board[empty_row][empty_col] = EMPTY;
+        }
+        false
+    }
+
+    fn get_solution_count_for(sudoku: &Sudoku) -> usize {
+        let mut sudoku = sudoku.clone();
+        let mut count: usize = 0;
+        Self::count_solutions(&mut sudoku, &mut count, 2);
+        count
+    }
+
+    pub fn has_unique_solution(sudoku: &Sudoku) -> bool {
+        Self::get_solution_count_for(sudoku) == 1
     }
 
     #[allow(dead_code)]
