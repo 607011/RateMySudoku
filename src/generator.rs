@@ -1,4 +1,5 @@
 use crate::{EMPTY, Sudoku};
+use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 
 impl Sudoku {
@@ -93,7 +94,7 @@ impl Sudoku {
     /// and finally removes cells while ensuring a unique solution.
     /// The `filled_cells` parameter specifies how many cells should remain filled.
     pub fn generate_diagonal_fill(filled_cells: usize) -> Option<Self> {
-        let mut rng = rand::rng();
+        let mut rng: ThreadRng = rand::rng();
         let mut all_digits: Vec<u8> = (1..=9).collect();
         let mut sudoku = Sudoku::new();
         // Fill the 3 diagonal boxes (top-left, middle, bottom-right)
@@ -110,7 +111,6 @@ impl Sudoku {
         // Get all filled cells that haven't been removed yet
         let mut available_cells: Vec<(usize, usize)> = (0..9)
             .flat_map(|row| (0..9).map(move |col| (row, col)))
-            .filter(|&(row, col)| sudoku.board[row][col] != EMPTY)
             .collect();
         available_cells.shuffle(&mut rng);
         available_cells.truncate(81 - filled_cells);
