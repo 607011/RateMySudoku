@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let tx = tx.clone();
         thread::spawn(move || {
             loop {
-                if let Some(sudoku) = Sudoku::generate(filled_cells) {
+                if let Some(sudoku) = Sudoku::generate_incrementally(filled_cells) {
                     let sudoku_string = sudoku.to_board_string();
                     let mut computer_sudoku = sudoku.clone();
                     let mut sudoku = sudoku;

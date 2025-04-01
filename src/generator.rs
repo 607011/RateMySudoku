@@ -40,9 +40,59 @@ impl Sudoku {
         false
     }
 
-    /// Generates a new Sudoku puzzle with a given number of filled cells.
-    /// The puzzle is guaranteed to have a unique solution.
-    pub fn generate(filled_cells: usize) -> Option<Self> {
+    /// Generate a Sudoku puzzle by filling cells incrementally.
+    /// This method fills cells one by one, ensuring that the
+    /// puzzle has a unique solution.
+    /// The `filled_cells` parameter specifies how many cells should remain filled.
+    /// The minimum number of cells to fill is 17.
+    /// If the puzzle cannot be generated with the specified number of filled cells,
+    /// it returns `None`.
+    pub fn generate_incrementally(filled_cells: usize) -> Option<Self> {
+        let min_cells_to_fill = 17;
+        let mut rng = rand::rng();
+        let mut all_digits: Vec<u8> = (1..=9).collect();
+        let mut sudoku = Sudoku::new();
+        let mut filled = 0;
+        let mut positions: Vec<(usize, usize)> = (0..9)
+            .flat_map(|row| (0..9).map(move |col| (row, col)))
+            .collect();
+        positions.shuffle(&mut rng);
+
+        // Fill cells one by one
+        while filled < filled_cells.max(min_cells_to_fill) && !positions.is_empty() {
+            let (row, col) = positions.pop().unwrap();
+            if sudoku.board[row][col] != EMPTY {
+                continue;
+            }
+            // Shuffle the digits for each attempt
+            all_digits.shuffle(&mut rng);
+            // Try placing each digit
+            for &digit in &all_digits {
+                if sudoku.can_place(row, col, digit) {
+                    sudoku.board[row][col] = digit;
+                    filled += 1;
+                    break;
+                }
+            }
+        }
+        if filled == filled_cells.max(min_cells_to_fill) {
+            sudoku.original_board = sudoku.board;
+            let mut solution_count = 0;
+            Self::count_solutions(&mut sudoku, &mut solution_count, 2);
+            if solution_count != 1 {
+                return None;
+            }
+            return Some(sudoku);
+        }
+
+        None
+    }
+
+    /// Generate a new Sudoku puzzle with a given number of filled cells.
+    /// This method fills the diagonal boxes first, then solves the Sudoku,
+    /// and finally removes cells while ensuring a unique solution.
+    /// The `filled_cells` parameter specifies how many cells should remain filled.
+    pub fn generate_diagonal_fill(filled_cells: usize) -> Option<Self> {
         let mut rng = rand::rng();
         let mut all_digits: Vec<u8> = (1..=9).collect();
         let mut sudoku = Sudoku::new();
@@ -68,10 +118,8 @@ impl Sudoku {
             sudoku.board[row][col] = EMPTY;
             // Check if the puzzle still has a unique solution
             let mut test_sudoku = sudoku.clone();
-
             let mut solution_count = 0;
             Self::count_solutions(&mut test_sudoku, &mut solution_count, 2);
-
             if solution_count != 1 {
                 return None;
             }
