@@ -12,7 +12,7 @@ pub enum FillAlgorithm {
 impl Display for FillAlgorithm {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            FillAlgorithm::DiagonalThinOut => write!(f, "diagonal_thin_out"),
+            FillAlgorithm::DiagonalThinOut => write!(f, "diagonal-thin-out"),
             FillAlgorithm::Incremental => write!(f, "incremental"),
         }
     }
