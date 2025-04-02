@@ -22,7 +22,6 @@ pub struct SudokuGenerator {
     fill_algorithm: FillAlgorithm,
     max_filled_cells: usize,
     solutions_iter: std::vec::IntoIter<[[u8; 9]; 9]>,
-    rng: ThreadRng,
 }
 
 /// A generator for Sudoku puzzles.
@@ -60,7 +59,6 @@ impl SudokuGenerator {
             fill_algorithm,
             max_filled_cells,
             solutions_iter: solutions.into_iter(),
-            rng,
         }
     }
 }
@@ -94,7 +92,8 @@ impl SudokuGenerator {
         let mut available_cells: Vec<(usize, usize)> = (0..9)
             .flat_map(|row| (0..9).map(move |col| (row, col)))
             .collect();
-        available_cells.shuffle(&mut self.rng);
+        let mut rng = rand::rng();
+        available_cells.shuffle(&mut rng);
         let mut filled_cells = 81;
         while let Some((row, col)) = available_cells.pop() {
             let cell = sudoku.board[row][col];
