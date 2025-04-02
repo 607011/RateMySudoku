@@ -34,6 +34,14 @@ impl SudokuGenerator {
         let mut rng = rand::rng();
         let solutions = match fill_algorithm {
             FillAlgorithm::DiagonalThinOut => {
+                // There are 6.67 × 10²¹ completed valid Sudoku grids (including
+                // all symmetries and rotations).
+                // By randomly filling the three diagonal boxes, you can create
+                // (9!)³ ≈ 4.78 × 10¹⁶ different starting constellations.
+                // Whens solved, each of these constellations leads to tens of
+                // thousands valid completetions (see `all_solutions()`).
+                // The `Iterator` (see `next()`)  will return these completions
+                // one by one.
                 let mut all_digits: Vec<u8> = (1..=9).collect();
                 let mut sudoku = Sudoku::new();
                 // Fill the 3 diagonal boxes (top-left, middle, bottom-right)
