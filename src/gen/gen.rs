@@ -10,14 +10,14 @@ struct Cli {
     #[arg(short, long, default_value_t = FillAlgorithm::DiagonalThinOut, help = "Algorithm to use for generating Sudoku puzzles")]
     algorithm: FillAlgorithm,
     #[arg(
-        short,
+        short = 'n',
         long,
         default_value_t = 24,
         value_name = "N",
         help = "Number of filled cells in the Sudoku puzzle"
     )]
     max_filled_cells: usize,
-    #[arg(short, long, help = "Number of threads to use for generation")]
+    #[arg(short = 't', long, help = "Number of threads to use for generation")]
     num_threads: Option<usize>,
     #[arg(short, long, help = "Enable logging")]
     logging: Option<String>,

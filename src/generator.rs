@@ -12,7 +12,7 @@ pub enum FillAlgorithm {
 impl Display for FillAlgorithm {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            FillAlgorithm::DiagonalThinOut => write!(f, "diagonal_thin_out"),
+            FillAlgorithm::DiagonalThinOut => write!(f, "diagonal-thin-out"),
             FillAlgorithm::Incremental => write!(f, "incremental"),
         }
     }
@@ -22,7 +22,6 @@ pub struct SudokuGenerator {
     fill_algorithm: FillAlgorithm,
     max_filled_cells: usize,
     solutions_iter: std::vec::IntoIter<[[u8; 9]; 9]>,
-    rng: ThreadRng,
 }
 
 /// A generator for Sudoku puzzles.
@@ -35,6 +34,14 @@ impl SudokuGenerator {
         let mut rng = rand::rng();
         let solutions = match fill_algorithm {
             FillAlgorithm::DiagonalThinOut => {
+                // There are 6.67 × 10²¹ completed valid Sudoku grids (including
+                // all symmetries and rotations).
+                // By randomly filling the three diagonal boxes, you can create
+                // (9!)³ ≈ 4.78 × 10¹⁶ different starting constellations.
+                // Whens solved, each of these constellations leads to tens of
+                // thousands valid completetions (see `all_solutions()`).
+                // The `Iterator` (see `next()`)  will return these completions
+                // one by one.
                 let mut all_digits: Vec<u8> = (1..=9).collect();
                 let mut sudoku = Sudoku::new();
                 // Fill the 3 diagonal boxes (top-left, middle, bottom-right)
@@ -60,7 +67,6 @@ impl SudokuGenerator {
             fill_algorithm,
             max_filled_cells,
             solutions_iter: solutions.into_iter(),
-            rng,
         }
     }
 }
@@ -94,7 +100,8 @@ impl SudokuGenerator {
         let mut available_cells: Vec<(usize, usize)> = (0..9)
             .flat_map(|row| (0..9).map(move |col| (row, col)))
             .collect();
-        available_cells.shuffle(&mut self.rng);
+        let mut rng = rand::rng();
+        available_cells.shuffle(&mut rng);
         let mut filled_cells = 81;
         while let Some((row, col)) = available_cells.pop() {
             let cell = sudoku.board[row][col];

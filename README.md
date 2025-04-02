@@ -38,10 +38,16 @@ More to come …
 
 ### Generator 
 
-Generate Sudokus with 23 filled cells and append them to the file generated/23.txt
+Generate Sudokus with 19 filled cells and append them to the file generated/19.txt
 
 ```
-cargo run --bin gen --release -- 23 >> generated/23.txt
+cargo run --bin gen --release -- -n 19 >> generated/19.txt
+```
+
+Get help on generator with:
+
+```
+cargo run --bin gen --release -- --help
 ```
 
 ### Visual Solver
@@ -49,6 +55,28 @@ cargo run --bin gen --release -- 23 >> generated/23.txt
 ```
 cargo run --bin sudokui --release
 ```
+
+You can paste Sudoku puzzles with Ctrl+V (Cmd+V on Mac) in single-line format like
+`405030809000000007200004030100000006000050400000001003000600024070900000890000000` or
+in matrix format like 
+
+```
+4 0 5 0 3 0 8 0 9
+0 0 0 0 0 0 0 0 7
+2 0 0 0 0 4 0 3 0
+1 0 0 0 0 0 0 0 6
+0 0 0 0 5 0 4 0 0
+0 0 0 0 0 1 0 0 3
+0 0 0 6 0 0 0 2 4
+0 7 0 9 0 0 0 0 0
+8 9 0 0 0 0 0 0 0
+```
+
+"File/Save as ..." allows you to save the current state (filled cells and candidates)
+of the puzzle in multiple formats. With the suffix ".zst" a binary, zstd compressed
+file is written. ".bin" represents such a binary without compression. If you need
+a human-readable representation use the suffix ".json" which leads to a file in JSON
+format. With "File/Load" you can load each of these files.
 
 ### Sudoku Rater
 
