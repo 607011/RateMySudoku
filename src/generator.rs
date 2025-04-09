@@ -18,8 +18,24 @@ impl Display for FillAlgorithm {
     }
 }
 
+#[derive(clap::ValueEnum, Debug, Clone, Copy)]
+pub enum ThinningAlgorithm {
+    Single,
+    Mirrored,
+}
+
+impl Display for ThinningAlgorithm {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ThinningAlgorithm::Single => write!(f, "single"),
+            ThinningAlgorithm::Mirrored => write!(f, "mirrored"),
+        }
+    }
+}
+
 pub struct SudokuGenerator {
     fill_algorithm: FillAlgorithm,
+    thinning_algorithm: Option<ThinningAlgorithm>,
     max_filled_cells: usize,
     solutions_iter: std::vec::IntoIter<[[u8; 9]; 9]>,
 }
@@ -30,7 +46,11 @@ pub struct SudokuGenerator {
 /// The `max_filled_cells` parameter specifies how many cells should remain filled
 /// at most. The minimum number of cells to fill is 17 (God's Number).
 impl SudokuGenerator {
-    pub fn new(fill_algorithm: FillAlgorithm, max_filled_cells: usize) -> Self {
+    pub fn new(
+        fill_algorithm: FillAlgorithm,
+        thinning_algorithm: Option<ThinningAlgorithm>,
+        max_filled_cells: usize,
+    ) -> Self {
         let mut rng = rand::rng();
         let solutions = match fill_algorithm {
             FillAlgorithm::DiagonalThinOut => {
@@ -65,6 +85,7 @@ impl SudokuGenerator {
         };
         SudokuGenerator {
             fill_algorithm,
+            thinning_algorithm,
             max_filled_cells,
             solutions_iter: solutions.into_iter(),
         }
@@ -104,18 +125,38 @@ impl SudokuGenerator {
         available_cells.shuffle(&mut rng);
         let mut filled_cells = 81;
         while let Some((row, col)) = available_cells.pop() {
-            let cell = sudoku.board[row][col];
-            sudoku.board[row][col] = EMPTY;
-            if Sudoku::has_unique_solution(&sudoku) {
-                filled_cells -= 1;
-                if filled_cells <= self.max_filled_cells {
-                    sudoku.original_board = sudoku.board;
-                    return Some(sudoku);
+            match self.thinning_algorithm {
+                Some(ThinningAlgorithm::Mirrored) => {
+                    let mirror_row = 8 - row;
+                    let mirror_col = 8 - col;
+                    let cell1 = sudoku.board[row][col];
+                    let cell2 = sudoku.board[mirror_row][mirror_col];
+                    sudoku.board[row][col] = EMPTY;
+                    sudoku.board[mirror_row][mirror_col] = EMPTY;
+                    if Sudoku::has_unique_solution(&sudoku) {
+                        filled_cells -= 2;
+                        if filled_cells <= self.max_filled_cells {
+                            sudoku.original_board = sudoku.board;
+                            return Some(sudoku);
+                        }
+                    } else {
+                        sudoku.board[row][col] = cell1;
+                        sudoku.board[mirror_row][mirror_col] = cell2;
+                    }
                 }
-            } else {
-                // Cell removal created a Sudoku with multiple solutions,
-                // so we need to backtrack
-                sudoku.board[row][col] = cell;
+                _ => {
+                    let cell = sudoku.board[row][col];
+                    sudoku.board[row][col] = EMPTY;
+                    if Sudoku::has_unique_solution(&sudoku) {
+                        filled_cells -= 1;
+                        if filled_cells <= self.max_filled_cells {
+                            sudoku.original_board = sudoku.board;
+                            return Some(sudoku);
+                        }
+                    } else {
+                        sudoku.board[row][col] = cell;
+                    }
+                }
             }
         }
         None
