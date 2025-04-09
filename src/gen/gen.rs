@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 sudoku, computer_sudoku, sudoku_string
                             );
                         }
-                    } else if min_effort.is_none(){
+                    } else if min_effort.is_none() {
                         tx.send((f64::INFINITY, sudoku_string)).unwrap();
                     }
                 }
