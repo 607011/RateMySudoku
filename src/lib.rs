@@ -378,16 +378,6 @@ impl Sudoku {
         self.rating.clone()
     }
 
-    pub fn difficulty(&self) -> f64 {
-        let candidates_removed = self.rating.iter().map(|(_, &count)| count).sum::<usize>();
-        let total_rating: i32 = self
-            .rating
-            .iter()
-            .map(|(strategy, &count)| strategy.difficulty() * count as i32)
-            .sum();
-        (total_rating as f64) / (candidates_removed as f64)
-    }
-
     pub fn from_zstd(binary: &[u8]) -> Result<Self, SudokuError> {
         let mut decoder = zstd::stream::Decoder::new(binary).unwrap();
         let mut decompressed_data = Vec::new();
