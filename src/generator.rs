@@ -38,7 +38,7 @@ impl SudokuGenerator {
                 // all symmetries and rotations).
                 // By randomly filling the three diagonal boxes, you can create
                 // (9!)³ ≈ 4.78 × 10¹⁶ different starting constellations.
-                // Whens solved, each of these constellations leads to tens of
+                // When solved, each of these constellations leads to tens of
                 // thousands valid completetions (see `all_solutions()`).
                 // The `Iterator` (see `next()`)  will return these completions
                 // one by one.
@@ -79,8 +79,8 @@ impl Iterator for SudokuGenerator {
             FillAlgorithm::DiagonalThinOut => {
                 while let Some(board) = self.solutions_iter.next() {
                     let sudoku = Sudoku::from_board(board);
-                    // Try to reduce this solution
-                    if let Some(reduced) = self.try_reduce_puzzle(sudoku) {
+                    // Try to thin out this solution
+                    if let Some(reduced) = self.try_thin_out_puzzle(sudoku) {
                         return Some(reduced);
                     }
                 }
@@ -96,7 +96,7 @@ impl Iterator for SudokuGenerator {
 }
 
 impl SudokuGenerator {
-    fn try_reduce_puzzle(&mut self, mut sudoku: Sudoku) -> Option<Sudoku> {
+    fn try_thin_out_puzzle(&mut self, mut sudoku: Sudoku) -> Option<Sudoku> {
         let mut available_cells: Vec<(usize, usize)> = (0..9)
             .flat_map(|row| (0..9).map(move |col| (row, col)))
             .collect();
