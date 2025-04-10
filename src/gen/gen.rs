@@ -19,12 +19,10 @@ struct Cli {
         help = "Number of filled cells in the Sudoku puzzle"
     )]
     max_filled_cells: usize,
-    #[arg(
-        short = 'e',
-        long,
-        help = "Minimum difficulty level for the Sudoku puzzle"
-    )]
+    #[arg(long, help = "Minimum effort level for the Sudoku puzzle")]
     min_effort: Option<f64>,
+    #[arg(long, help = "Maximum effort for the Sudoku puzzle")]
+    max_effort: Option<f64>,
     #[arg(short = 't', long, help = "Number of threads to use for generation")]
     num_threads: Option<usize>,
     #[arg(short, long, help = "Enable logging")]
@@ -40,6 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .init();
     };
     let min_effort = cli.min_effort;
+    let max_effort = cli.max_effort;
     let max_filled_cells = cli.max_filled_cells;
     let fill_algorithm = cli.algorithm;
     let thinning = cli.thinning;
@@ -68,22 +67,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut computer_sudoku = sudoku.clone();
                     let mut sudoku = sudoku;
                     if sudoku.solve_human_like() {
-                        if let Some(min_effort) = min_effort {
-                            if sudoku.effort() < min_effort {
-                                continue;
-                            }
-                        }
                         computer_sudoku.solve_by_backtracking();
                         if sudoku == computer_sudoku {
-                            tx.send((sudoku.effort(), sudoku_string)).unwrap();
+                            if min_effort.unwrap_or(f64::NEG_INFINITY) < sudoku.effort()
+                                && sudoku.effort() < max_effort.unwrap_or(f64::INFINITY)
+                            {
+                                tx.send((sudoku.effort(), sudoku_string)).unwrap();
+                            }
                         } else {
-                            panic!(
+                            log::error!(
                                 "Solutions differ; human-like solver:\n{}\nbacktracking:\n{}\noriginal board: {}",
-                                sudoku, computer_sudoku, sudoku_string
+                                sudoku,
+                                computer_sudoku,
+                                sudoku_string
                             );
                         }
-                    } else if min_effort.is_none() {
-                        tx.send((f64::INFINITY, sudoku_string)).unwrap();
+                    } else {
+                        if max_effort.is_none() {
+                            tx.send((f64::INFINITY, sudoku_string)).unwrap();
+                        }
                     }
                 }
             }
