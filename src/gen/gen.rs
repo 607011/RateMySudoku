@@ -45,8 +45,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
         m.replace([' ', '\n', '\r'], "")
-         .replace(['X', 'x'], "1")
-         .replace('.', "0")
+            .replace(['X', 'x'], "1")
+            .replace('.', "0")
     });
     let min_effort = cli.min_effort;
     let max_effort = cli.max_effort;

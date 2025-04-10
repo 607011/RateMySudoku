@@ -116,7 +116,7 @@ impl Iterator for SudokuGenerator {
                 }
             }
             FillAlgorithm::Mask => {
-                while let Some(board) = self.solutions_iter.next() {
+                for board in self.solutions_iter.by_ref() {
                     let sudoku = Sudoku::from_board(board);
                     let mut masked_sudoku = sudoku.clone();
                     if let Some(mask) = &self.mask {
