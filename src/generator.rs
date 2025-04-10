@@ -7,6 +7,7 @@ use std::fmt::{Display, Formatter};
 pub enum FillAlgorithm {
     DiagonalThinOut,
     Incremental,
+    Mask,
 }
 
 impl Display for FillAlgorithm {
@@ -14,6 +15,7 @@ impl Display for FillAlgorithm {
         match self {
             FillAlgorithm::DiagonalThinOut => write!(f, "diagonal-thin-out"),
             FillAlgorithm::Incremental => write!(f, "incremental"),
+            FillAlgorithm::Mask => write!(f, "mask"),
         }
     }
 }
@@ -38,6 +40,7 @@ pub struct SudokuGenerator {
     thinning_algorithm: Option<ThinningAlgorithm>,
     max_filled_cells: usize,
     solutions_iter: std::vec::IntoIter<[[u8; 9]; 9]>,
+    mask: Option<String>,
 }
 
 /// A generator for Sudoku puzzles.
@@ -47,13 +50,17 @@ pub struct SudokuGenerator {
 /// at most. The minimum number of cells to fill is 17 (God's Number).
 impl SudokuGenerator {
     pub fn new(
-        fill_algorithm: FillAlgorithm,
-        thinning_algorithm: Option<ThinningAlgorithm>,
+        mut fill_algorithm: FillAlgorithm,
+        mut thinning_algorithm: Option<ThinningAlgorithm>,
         max_filled_cells: usize,
+        mask: Option<String>,
     ) -> Self {
-        let mut rng = rand::rng();
+        if mask.is_some() {
+            fill_algorithm = FillAlgorithm::Mask;
+            thinning_algorithm = None;
+        }
         let solutions = match fill_algorithm {
-            FillAlgorithm::DiagonalThinOut => {
+            FillAlgorithm::DiagonalThinOut | FillAlgorithm::Mask => {
                 // There are 6.67 × 10²¹ completed valid Sudoku grids (including
                 // all symmetries and rotations).
                 // By randomly filling the three diagonal boxes, you can create
@@ -62,6 +69,7 @@ impl SudokuGenerator {
                 // thousands valid completetions (see `all_solutions()`).
                 // The `Iterator` (see `next()`)  will return these completions
                 // one by one.
+                let mut rng = rand::rng();
                 let mut all_digits: Vec<u8> = (1..=9).collect();
                 let mut sudoku = Sudoku::new();
                 // Fill the 3 diagonal boxes (top-left, middle, bottom-right)
@@ -88,6 +96,7 @@ impl SudokuGenerator {
             thinning_algorithm,
             max_filled_cells,
             solutions_iter: solutions.into_iter(),
+            mask,
         }
     }
 }
@@ -103,6 +112,25 @@ impl Iterator for SudokuGenerator {
                     // Try to thin out this solution
                     if let Some(reduced) = self.try_thin_out_puzzle(sudoku) {
                         return Some(reduced);
+                    }
+                }
+            }
+            FillAlgorithm::Mask => {
+                while let Some(board) = self.solutions_iter.next() {
+                    let sudoku = Sudoku::from_board(board);
+                    let mut masked_sudoku = sudoku.clone();
+                    if let Some(mask) = &self.mask {
+                        for (i, ch) in mask.chars().enumerate() {
+                            if ch == '0' && i < 81 {
+                                let row = i / 9;
+                                let col = i % 9;
+                                masked_sudoku.board[row][col] = EMPTY;
+                            }
+                        }
+                    }
+                    if Sudoku::has_unique_solution(&masked_sudoku) {
+                        masked_sudoku.original_board = masked_sudoku.board;
+                        return Some(masked_sudoku);
                     }
                 }
             }

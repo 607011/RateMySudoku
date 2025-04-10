@@ -25,6 +25,8 @@ struct Cli {
     max_effort: Option<f64>,
     #[arg(short = 't', long, help = "Number of threads to use for generation")]
     num_threads: Option<usize>,
+    #[arg(long, help = "Mask to use for the Sudoku puzzle")]
+    mask: Option<String>,
     #[arg(short, long, help = "Enable logging")]
     logging: Option<String>,
 }
@@ -37,6 +39,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .format_target(false)
             .init();
     };
+    let mask = cli.mask.as_deref().map(|m| {
+        if m.len() != 81 {
+            log::error!("Mask must be 81 characters long");
+            std::process::exit(1);
+        }
+        m.replace([' ', '\n', '\r'], "")
+         .replace(['X', 'x'], "1")
+         .replace('.', "0")
+    });
     let min_effort = cli.min_effort;
     let max_effort = cli.max_effort;
     let max_filled_cells = cli.max_filled_cells;
@@ -58,10 +69,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdout_mutex = std::sync::Mutex::new(());
     for _ in 0..thread_count {
         let tx = tx.clone();
+        let mask = mask.clone();
         thread::spawn(move || {
             loop {
+                let mask = mask.clone();
                 let generator =
-                    SudokuGenerator::new(fill_algorithm, Some(thinning), max_filled_cells);
+                    SudokuGenerator::new(fill_algorithm, Some(thinning), max_filled_cells, mask);
                 for sudoku in generator {
                     let sudoku_string = sudoku.to_board_string();
                     let mut computer_sudoku = sudoku.clone();
@@ -82,10 +95,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 sudoku_string
                             );
                         }
-                    } else {
-                        if max_effort.is_none() {
-                            tx.send((f64::INFINITY, sudoku_string)).unwrap();
-                        }
+                    } else if max_effort.is_none() {
+                        tx.send((f64::INFINITY, sudoku_string)).unwrap();
                     }
                 }
             }
