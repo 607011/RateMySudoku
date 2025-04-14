@@ -145,49 +145,34 @@ impl Iterator for SudokuGenerator {
 }
 
 impl SudokuGenerator {
-    fn try_thin_out_puzzle(&mut self, mut sudoku: Sudoku) -> Option<Sudoku> {
+    fn try_thin_out_puzzle(&mut self, sudoku: Sudoku) -> Option<Sudoku> {
+        let mut sudoku = sudoku.clone();
         let mut available_cells: Vec<(usize, usize)> = (0..9)
             .flat_map(|row| (0..9).map(move |col| (row, col)))
             .collect();
         let mut rng = rand::rng();
         available_cells.shuffle(&mut rng);
         let mut filled_cells = 81;
-        while let Some((row, col)) = available_cells.pop() {
+        while filled_cells > self.max_filled_cells {
+            let (row, col) = available_cells.pop().unwrap();
             match self.thinning_algorithm {
                 Some(ThinningAlgorithm::Mirrored) => {
-                    let mirror_row = 8 - row;
-                    let mirror_col = 8 - col;
-                    let cell1 = sudoku.board[row][col];
-                    let cell2 = sudoku.board[mirror_row][mirror_col];
                     sudoku.board[row][col] = EMPTY;
-                    sudoku.board[mirror_row][mirror_col] = EMPTY;
-                    if Sudoku::has_unique_solution(&sudoku) {
-                        filled_cells -= 2;
-                        if filled_cells <= self.max_filled_cells {
-                            sudoku.original_board = sudoku.board;
-                            return Some(sudoku);
-                        }
-                    } else {
-                        sudoku.board[row][col] = cell1;
-                        sudoku.board[mirror_row][mirror_col] = cell2;
-                    }
+                    sudoku.board[8 - row][8 - col] = EMPTY;
+                    filled_cells -= 2;
                 }
                 _ => {
-                    let cell = sudoku.board[row][col];
                     sudoku.board[row][col] = EMPTY;
-                    if Sudoku::has_unique_solution(&sudoku) {
-                        filled_cells -= 1;
-                        if filled_cells <= self.max_filled_cells {
-                            sudoku.original_board = sudoku.board;
-                            return Some(sudoku);
-                        }
-                    } else {
-                        sudoku.board[row][col] = cell;
-                    }
+                    filled_cells -= 1;
                 }
             }
         }
-        None
+        // Check if the puzzle has a unique solution and set the original board
+        Sudoku::has_unique_solution(&sudoku).then(|| {
+            let mut result = sudoku;
+            result.original_board = result.board;
+            result
+        })
     }
 
     /// Generate a Sudoku puzzle by filling cells incrementally.
